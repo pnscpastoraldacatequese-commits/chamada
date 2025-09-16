@@ -27,18 +27,18 @@
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais para o aplicativo
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = firebaseConfig.appId;
-
-        let userId;
+        let app, auth, db, userId, appId;
 
         setLogLevel('debug'); // Ativa logs de depuração para o Firestore
 
         // Função para inicializar a autenticação do Firebase
         async function initializeAuth() {
             try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                appId = firebaseConfig.appId;
+
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
