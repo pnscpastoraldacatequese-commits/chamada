@@ -8,7 +8,7 @@
     <script>
         // Substitua os valores abaixo pelos seus dados do Firebase.
         // Você os encontra nas configurações do seu projeto.
-        const __firebase_config = {
+        const firebaseConfig = {
             apiKey: "AIzaSyDqn5MejlYyNmXK-OZayhOZ5SrzN3YcNCM",
             authDomain: "dados-catequese.firebaseapp.com",
             projectId: "dados-catequese",
@@ -16,8 +16,7 @@
             messagingSenderId: "420948905617",
             appId: "1:420948905617:web:b08e29cf50873ff804f930"
         };
-        const __initial_auth_token = null; // Deixe como null para testes locais
-        const __app_id = __firebase_config.appId;
+        const initialAuthToken = null; // Deixe como null para testes locais
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
@@ -27,35 +26,25 @@
         import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Variáveis globais para configuração do Firebase
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Variáveis globais para o aplicativo
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = firebaseConfig.appId;
 
-        let app, db, auth, userId;
+        let userId;
 
-        // Função para inicializar o Firebase
-        async function initializeFirebase() {
-            if (!firebaseConfig) {
-                console.error("Firebase config is missing. The app will not function correctly.");
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('main-content').style.display = 'block';
-                return;
-            }
+        setLogLevel('debug'); // Ativa logs de depuração para o Firestore
 
+        // Função para inicializar a autenticação do Firebase
+        async function initializeAuth() {
             try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                setLogLevel('debug'); // Ativa logs de depuração para o Firestore
-
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
 
-                // Listener para o estado de autenticação do usuário
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
@@ -376,7 +365,7 @@
 
 
         // Inicia a aplicação quando a janela carrega
-        window.onload = initializeFirebase;
+        window.onload = initializeAuth;
     </script>
 </head>
 
