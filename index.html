@@ -224,7 +224,8 @@
             const tableHeader = document.getElementById(tableBodyId.replace('body', 'header'));
             tableHeader.innerHTML = '<th class="px-2 py-1 text-xs md:text-sm whitespace-nowrap">Nome</th>';
             dates.forEach(date => {
-                tableHeader.innerHTML += `<th class="px-2 py-1 text-xs md:text-sm whitespace-nowrap">${date.substring(5)}</th>`;
+                const [year, month, day] = date.split('-');
+                tableHeader.innerHTML += `<th class="px-2 py-1 text-xs md:text-sm whitespace-nowrap">${day}/${month}</th>`;
             });
 
             catechumens.forEach(catechumen => {
