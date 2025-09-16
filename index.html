@@ -23,7 +23,7 @@
         // Importa os módulos necessários do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc, where, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais para o aplicativo
@@ -311,6 +311,7 @@
         window.openAdminPanel = async function() {
             document.getElementById('admin-modal').style.display = 'flex';
             await loadClassesForAdmin();
+            await loadCatechumensForAdmin();
         }
 
         window.closeAdminPanel = function() {
@@ -320,16 +321,25 @@
         async function loadClassesForAdmin() {
             const classSelect = document.getElementById('new-catechumen-class');
             classSelect.innerHTML = '';
+            const editClassSelect = document.getElementById('edit-class-select');
+            editClassSelect.innerHTML = '';
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
                 const classesCollectionRef = collection(db, `artifacts/${appId}/public/data/classes`);
                 const querySnapshot = await getDocs(classesCollectionRef);
                 querySnapshot.forEach(doc => {
+                    // Preenche o seletor de adicionar catequizando
                     const option = document.createElement('option');
                     option.value = doc.id;
                     option.innerText = doc.data().name;
                     classSelect.appendChild(option);
+
+                    // Preenche o seletor de editar turma
+                    const editOption = document.createElement('option');
+                    editOption.value = doc.id;
+                    editOption.innerText = doc.data().name;
+                    editClassSelect.appendChild(editOption);
                 });
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
@@ -337,6 +347,25 @@
             }
         }
         
+        async function loadCatechumensForAdmin() {
+            const editCatechumenSelect = document.getElementById('edit-catechumen-select');
+            editCatechumenSelect.innerHTML = '';
+            try {
+                if (!db) throw new Error("Firestore is not initialized.");
+                const catechumensCollectionRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+                const querySnapshot = await getDocs(catechumensCollectionRef);
+                querySnapshot.forEach(doc => {
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.innerText = `${doc.data().name} (${doc.data().classId})`;
+                    editCatechumenSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Erro ao carregar catequizandos para o admin:", error);
+                showModal("Erro ao carregar os catequizandos para o painel de administração.");
+            }
+        }
+
         window.addTurma = async function(event) {
             event.preventDefault();
             const classIdInput = document.getElementById('new-class-id');
@@ -366,7 +395,7 @@
                 showModal("Erro ao adicionar a turma. Verifique a conexão.");
             }
         }
-
+        
         window.addCatequizando = async function(event) {
             event.preventDefault();
             const catechumenName = document.getElementById('new-catechumen-name').value;
@@ -387,16 +416,124 @@
                 });
                 document.getElementById('new-catechumen-name').value = '';
                 showModal(`Catequizando "${catechumenName}" adicionado com sucesso!`);
+                await loadCatechumensForAdmin();
             } catch (error) {
                 console.error("Erro ao adicionar catequizando:", error);
                 showModal("Erro ao adicionar o catequizando. Verifique a conexão.");
             }
         }
+        
+        window.editTurma = async function(event) {
+            event.preventDefault();
+            const classId = document.getElementById('edit-class-select').value;
+            const newClassName = document.getElementById('edit-class-name').value;
+            const newClassId = document.getElementById('edit-class-id').value;
+            if (!classId || !newClassName || !newClassId) {
+                showModal("Preencha o ID e o nome da turma.");
+                return;
+            }
+            try {
+                if (classId !== newClassId) {
+                    // Move a turma e seus catequizandos para o novo ID
+                    const oldDocRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
+                    const newDocRef = doc(db, `artifacts/${appId}/public/data/classes`, newClassId);
+                    const oldDoc = await getDoc(oldDocRef);
+                    await setDoc(newDocRef, oldDoc.data());
+                    await updateDoc(newDocRef, { name: newClassName });
+                    const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+                    const q = query(catechumensRef, where("classId", "==", classId));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach(async (docSnap) => {
+                        await updateDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, docSnap.id), { classId: newClassId });
+                    });
+                    await deleteDoc(oldDocRef);
+                } else {
+                    const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
+                    await updateDoc(classRef, { name: newClassName });
+                }
+                showModal(`Turma atualizada com sucesso!`);
+                await loadClassesForAdmin();
+                await loadClasses();
+            } catch (error) {
+                console.error("Erro ao editar turma:", error);
+                showModal("Erro ao editar a turma. Verifique a conexão.");
+            }
+        }
+        
+        window.deleteTurma = async function() {
+            const classId = document.getElementById('edit-class-select').value;
+            if (!classId) {
+                showModal("Selecione uma turma para excluir.");
+                return;
+            }
+            if (confirm(`Tem certeza que deseja excluir a turma e todos os seus catequizandos?`)) {
+                try {
+                    const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
+                    await deleteDoc(classRef);
+                    const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+                    const q = query(catechumensRef, where("classId", "==", classId));
+                    const querySnapshot = await getDocs(q);
+                    querySnapshot.forEach(async (docSnap) => {
+                        await deleteDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, docSnap.id));
+                    });
+                    showModal(`Turma excluída com sucesso!`);
+                    await loadClassesForAdmin();
+                    await loadClasses();
+                } catch (error) {
+                    console.error("Erro ao excluir turma:", error);
+                    showModal("Erro ao excluir a turma. Verifique a conexão.");
+                }
+            }
+        }
+
+        window.editCatequizando = async function(event) {
+            event.preventDefault();
+            const catechumenId = document.getElementById('edit-catechumen-select').value;
+            const newCatechumenName = document.getElementById('edit-catechumen-name').value;
+            const newClassId = document.getElementById('edit-catechumen-class-transfer').value;
+            if (!catechumenId || !newCatechumenName || !newClassId) {
+                showModal("Preencha todos os campos para editar o catequizando.");
+                return;
+            }
+            try {
+                const catechumenRef = doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId);
+                await updateDoc(catechumenRef, { name: newCatechumenName, classId: newClassId });
+                showModal(`Catequizando atualizado com sucesso!`);
+                await loadCatechumensForAdmin();
+            } catch (error) {
+                console.error("Erro ao editar catequizando:", error);
+                showModal("Erro ao editar o catequizando. Verifique a conexão.");
+            }
+        }
+        
+        window.deleteCatequizando = async function() {
+            const catechumenId = document.getElementById('edit-catechumen-select').value;
+            if (!catechumenId) {
+                showModal("Selecione um catequizando para excluir.");
+                return;
+            }
+            if (confirm(`Tem certeza que deseja excluir este catequizando?`)) {
+                try {
+                    const catechumenRef = doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId);
+                    await deleteDoc(catechumenRef);
+                    showModal(`Catequizando excluído com sucesso!`);
+                    await loadCatechumensForAdmin();
+                } catch (error) {
+                    console.error("Erro ao excluir catequizando:", error);
+                    showModal("Erro ao excluir o catequizando. Verifique a conexão.");
+                }
+            }
+        }
+
 
         // Lógica do botão de Administração
         document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
         document.getElementById('add-class-form').onsubmit = window.addTurma;
         document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
+        document.getElementById('edit-class-form').onsubmit = window.editTurma;
+        document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
+        document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
+        document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
 
 
         // Conecta os botões de fechar e voltar
@@ -442,6 +579,24 @@
                     </form>
                 </div>
                 
+                <!-- Seção Editar/Excluir Turma -->
+                <div class="bg-gray-100 p-4 rounded-xl">
+                    <h4 class="text-lg font-bold mb-2">Editar/Excluir Turma</h4>
+                    <form id="edit-class-form">
+                        <div class="flex flex-col md:flex-row gap-2 mb-2">
+                            <select id="edit-class-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="" disabled selected>Selecione a Turma</option>
+                            </select>
+                            <input type="text" id="edit-class-name" placeholder="Novo nome da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <input type="text" id="edit-class-id" placeholder="Novo ID da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
+                            <button type="button" id="delete-class-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
+                        </div>
+                    </form>
+                </div>
+
                 <!-- Seção Adicionar Catequizando -->
                 <div class="bg-gray-100 p-4 rounded-xl">
                     <h4 class="text-lg font-bold mb-2">Adicionar Catequizando</h4>
@@ -453,6 +608,26 @@
                             </select>
                         </div>
                         <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar Catequizando</button>
+                    </form>
+                </div>
+                
+                <!-- Seção Editar/Excluir Catequizando -->
+                <div class="bg-gray-100 p-4 rounded-xl">
+                    <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
+                    <form id="edit-catechumen-form">
+                        <div class="flex flex-col md:flex-row gap-2 mb-2">
+                            <select id="edit-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="" disabled selected>Selecione o Catequizando</option>
+                            </select>
+                            <input type="text" id="edit-catechumen-name" placeholder="Novo nome do catequizando" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <select id="edit-catechumen-class-transfer" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="" disabled selected>Transferir para outra turma</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
+                            <button type="button" id="delete-catechumen-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
+                        </div>
                     </form>
                 </div>
             </div>
