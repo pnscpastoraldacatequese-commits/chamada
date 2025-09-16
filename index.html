@@ -70,9 +70,13 @@
         let presenceRecords = {};
 
         // Datas de encontros e missas (configuráveis)
-        const eventDates = [
+        const classDates = [
             "2025-09-14", "2025-09-21", "2025-09-28",
             "2025-10-05", "2025-10-12", "2025-10-19", "2025-10-26"
+        ];
+        const massDates = [
+            "2025-09-15", "2025-09-22", "2025-09-29",
+            "2025-10-06", "2025-10-13", "2025-10-20", "2025-10-27"
         ];
 
         // Mapeamento de status para cores e texto
@@ -180,21 +184,25 @@
                     const key = `${data.catechumenId}_${data.date}`;
                     presenceRecords[key] = data.status;
                 });
-                renderPresenceTable();
+                renderPresenceTables();
             }, (error) => {
                 console.error("Erro ao ouvir dados de presença:", error);
             });
         }
 
-        // Função para renderizar a tabela de presença
-        function renderPresenceTable() {
-            const tableBody = document.getElementById('presence-table-body');
+        // Função para renderizar as tabelas de presença
+        function renderPresenceTables() {
+            renderTable('class-table-body', classDates, 'encontros');
+            renderTable('mass-table-body', massDates, 'missas');
+        }
+
+        function renderTable(tableBodyId, dates, eventType) {
+            const tableBody = document.getElementById(tableBodyId);
             tableBody.innerHTML = '';
 
-            // Constrói o cabeçalho da tabela com as datas
-            const tableHeader = document.getElementById('presence-table-header');
+            const tableHeader = document.getElementById(tableBodyId.replace('body', 'header'));
             tableHeader.innerHTML = '<th>Nome</th>';
-            eventDates.forEach(date => {
+            dates.forEach(date => {
                 tableHeader.innerHTML += `<th class="px-2 py-1 text-xs md:text-sm whitespace-nowrap">${date.substring(5)}</th>`;
             });
 
@@ -203,14 +211,14 @@
                 row.className = "border-b border-gray-200";
                 row.innerHTML = `<td class="p-2 font-medium">${catechumen.name}</td>`;
 
-                eventDates.forEach(date => {
+                dates.forEach(date => {
                     const status = presenceRecords[`${catechumen.id}_${date}`] || 'Não Registrado';
                     const { class: btnClass, text } = statusMap[status];
 
                     row.innerHTML += `
                         <td class="p-2">
                             <button class="${btnClass} w-8 h-8 md:w-10 md:h-10 text-white font-bold rounded-full flex items-center justify-center text-xs md:text-sm transition-colors"
-                                onclick="updatePresenceStatus('${catechumen.id}', '${date}', '${status}')">
+                                onclick="updatePresenceStatus('${catechumen.id}', '${date}', '${newStatus}')">
                                 ${text}
                             </button>
                         </td>
@@ -472,20 +480,36 @@
                         <h2 id="class-title" class="text-xl md:text-2xl font-semibold text-center flex-grow"></h2>
                     </div>
 
+                    <!-- Tabela de Presença de Encontros -->
+                    <h3 class="text-xl font-semibold mt-6 mb-2">Presença em Encontros</h3>
+                    <div class="overflow-x-auto relative shadow-md sm:rounded-lg mb-6">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr id="class-table-header">
+                                    <th>Nome</th>
+                                </tr>
+                            </thead>
+                            <tbody id="class-table-body">
+                                <!-- Dados da tabela serão injetados aqui via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Tabela de Presença de Missas -->
+                    <h3 class="text-xl font-semibold mb-2">Presença em Missas</h3>
                     <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
                         <table class="w-full text-sm text-left text-gray-500">
                             <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr id="presence-table-header">
-                                    <!-- Cabeçalho da tabela será injetado aqui via JS -->
+                                <tr id="mass-table-header">
+                                    <th>Nome</th>
                                 </tr>
                             </thead>
-                            <tbody id="presence-table-body">
+                            <tbody id="mass-table-body">
                                 <!-- Dados da tabela serão injetados aqui via JS -->
                             </tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
         </div>
     </main>
