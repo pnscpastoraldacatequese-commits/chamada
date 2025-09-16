@@ -5,12 +5,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro de Presença da Catequese</title>
+    <script>
+        // Substitua os valores abaixo pelos seus dados do Firebase.
+        // Você os encontra nas configurações do seu projeto.
+        const __firebase_config = JSON.stringify({
+            apiKey: "AIzaSyDqn5MejlYyNmXK-OZayhOZ5SrzN3YcNCM",
+            authDomain: "dados-catequese.firebaseapp.com",
+            projectId: "dados-catequese",
+            storageBucket: "dados-catequese.firebasestorage.app",
+            messagingSenderId: "420948905617",
+            appId: "1:420948905617:web:b08e29cf50873ff804f930"
+        });
+        const __initial_auth_token = null; // Deixe como null para testes locais
+        const __app_id = "1:420948905617:web:b08e29cf50873ff804f930"; // Use o mesmo valor de appId acima
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
         // Importa os módulos necessários do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais para configuração do Firebase
@@ -24,8 +38,6 @@
         async function initializeFirebase() {
             if (!firebaseConfig) {
                 console.error("Firebase config is missing. The app will not function correctly.");
-                // Retornar ou usar um mock para não travar a aplicação.
-                // Aqui, vamos simplesmente retornar, e o app irá mostrar o painel admin.
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('main-content').style.display = 'block';
                 return;
