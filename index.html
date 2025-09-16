@@ -70,13 +70,14 @@
         let presenceRecords = {};
 
         // Datas de encontros e missas (configuráveis)
-        const classDates = [
-            "2025-09-14", "2025-09-21", "2025-09-28",
-            "2025-10-05", "2025-10-12", "2025-10-19", "2025-10-26"
+        const classDatesTuesday = [
+            "2025-09-16", "2025-09-23", "2025-09-30", "2025-10-07", "2025-10-14", "2025-10-21", "2025-10-28", "2025-11-04", "2025-11-11", "2025-11-18", "2025-11-25", "2025-12-02", "2025-12-09"
+        ];
+        const classDatesSaturday = [
+            "2025-09-20", "2025-09-27", "2025-10-04", "2025-10-11", "2025-10-18", "2025-10-25", "2025-11-01", "2025-11-08", "2025-11-15", "2025-11-22", "2025-11-29", "2025-12-06", "2025-12-13"
         ];
         const massDates = [
-            "2025-09-15", "2025-09-22", "2025-09-29",
-            "2025-10-06", "2025-10-13", "2025-10-20", "2025-10-27"
+            "2025-09-21", "2025-09-28", "2025-10-05", "2025-10-12", "2025-10-19", "2025-10-26", "2025-11-02", "2025-11-09", "2025-11-16", "2025-11-23", "2025-11-30", "2025-12-07", "2025-12-14"
         ];
 
         // Mapeamento de status para cores e texto
@@ -192,7 +193,16 @@
 
         // Função para renderizar as tabelas de presença
         function renderPresenceTables() {
-            renderTable('class-table-body', classDates, 'encontros');
+            let classDatesToUse = [];
+            const className = document.getElementById('class-title').innerText;
+            if (className.toLowerCase().includes('terça')) {
+                classDatesToUse = classDatesTuesday;
+            } else if (className.toLowerCase().includes('sábado')) {
+                classDatesToUse = classDatesSaturday;
+            } else {
+                classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
+            }
+            renderTable('class-table-body', classDatesToUse, 'encontros');
             renderTable('mass-table-body', massDates, 'missas');
         }
 
@@ -201,7 +211,7 @@
             tableBody.innerHTML = '';
 
             const tableHeader = document.getElementById(tableBodyId.replace('body', 'header'));
-            tableHeader.innerHTML = '<th>Nome</th>';
+            tableHeader.innerHTML = '<th class="px-2 py-1 text-xs md:text-sm whitespace-nowrap">Nome</th>';
             dates.forEach(date => {
                 tableHeader.innerHTML += `<th class="px-2 py-1 text-xs md:text-sm whitespace-nowrap">${date.substring(5)}</th>`;
             });
@@ -218,7 +228,7 @@
                     row.innerHTML += `
                         <td class="p-2">
                             <button class="${btnClass} w-8 h-8 md:w-10 md:h-10 text-white font-bold rounded-full flex items-center justify-center text-xs md:text-sm transition-colors"
-                                onclick="updatePresenceStatus('${catechumen.id}', '${date}', '${newStatus}')">
+                                onclick="updatePresenceStatus('${catechumen.id}', '${date}', '${status}')">
                                 ${text}
                             </button>
                         </td>
