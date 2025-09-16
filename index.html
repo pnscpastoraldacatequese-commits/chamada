@@ -586,6 +586,9 @@
         }
 
         // --- Funções de Relatórios ---
+        let currentClassReportData = null; // Armazena dados do relatório por turma
+        let currentCatechumenReportData = null; // Armazena dados do relatório por catequizando
+
         window.generateReportByClass = async function() {
             const classId = document.getElementById('report-class-select').value;
             if (!classId) {
@@ -617,7 +620,18 @@
             });
 
             // Lógica de cálculo de presença e faltas
-            const totalEvents = classDatesTuesday.length + massDates.length; // Assumindo todas as turmas de terça por padrão
+            const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
+            const className = classDoc.data()?.name || 'Turma';
+            let classDatesToUse = [];
+            if (className.toLowerCase().includes('terça')) {
+                classDatesToUse = classDatesTuesday;
+            } else if (className.toLowerCase().includes('sábado')) {
+                classDatesToUse = classDatesSaturday;
+            } else {
+                classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
+            }
+            const totalEvents = classDatesToUse.length + massDates.length;
+            
             const reportData = catechumensInClass.map(cat => {
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
@@ -631,12 +645,14 @@
                     percentage: percent
                 };
             });
-            
-            const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
-            const className = classDoc.data()?.name || 'Turma';
 
+            currentClassReportData = reportData; // Salva os dados para exportação
+            
             let reportHtml = `
-                <h4 class="text-xl font-bold mb-4">Relatório da Turma: ${className}</h4>
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-xl font-bold">Relatório da Turma: ${className}</h4>
+                    <button id="export-class-report-button" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Exportar para CSV</button>
+                </div>
                 <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -663,6 +679,7 @@
                 </div>
             `;
             document.getElementById('report-results').innerHTML = reportHtml;
+            document.getElementById('export-class-report-button').addEventListener('click', window.exportClassReportToCSV);
         }
 
         window.generateReportByCatechumen = async function() {
@@ -689,9 +706,13 @@
             const catechumenName = catechumenDoc.data()?.name || 'Catequizando';
             const className = catechumenDoc.data()?.classId || 'Turma Desconhecida';
 
+            currentCatechumenReportData = allPresence; // Salva os dados para exportação
 
             let reportHtml = `
-                <h4 class="text-xl font-bold mb-4">Relatório de Presença - ${catechumenName} (${className})</h4>
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-xl font-bold">Relatório de Presença - ${catechumenName} (${className})</h4>
+                    <button id="export-catechumen-report-button" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Exportar para CSV</button>
+                </div>
                 <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
                     <table class="w-full text-sm text-left text-gray-500">
                         <thead class="text-xs text-gray-700 uppercase bg-gray-50">
@@ -712,7 +733,52 @@
                 </div>
             `;
             document.getElementById('report-results').innerHTML = reportHtml;
+            document.getElementById('export-catechumen-report-button').addEventListener('click', window.exportCatechumenReportToCSV);
+        }
+        
+        // Função para exportar o relatório por turma
+        window.exportClassReportToCSV = function() {
+            if (!currentClassReportData) {
+                showModal("Nenhum relatório de turma para exportar.");
+                return;
+            }
 
+            let csv = "Nome,Presença,Falta,Falta Justificada,% Presença\n";
+            currentClassReportData.forEach(row => {
+                csv += `"${row.name}",${row.presence},${row.absence},${row.justified},"${row.percentage}%"\n`;
+            });
+            
+            const className = document.getElementById('report-class-select').options[document.getElementById('report-class-select').selectedIndex].text;
+            downloadCSV(csv, `relatorio_turma_${className}.csv`);
+        }
+        
+        // Função para exportar o relatório por catequizando
+        window.exportCatechumenReportToCSV = function() {
+             if (!currentCatechumenReportData) {
+                showModal("Nenhum relatório de catequizando para exportar.");
+                return;
+            }
+
+            let csv = "Data,Status\n";
+            currentCatechumenReportData.forEach(row => {
+                const [year, month, day] = row.date.split('-');
+                csv += `${day}/${month},${row.status}\n`;
+            });
+
+            const catechumenName = document.getElementById('report-catechumen-select').options[document.getElementById('report-catechumen-select').selectedIndex].text;
+            downloadCSV(csv, `relatorio_catequizando_${catechumenName}.csv`);
+        }
+        
+        // Função utilitária para baixar o arquivo CSV
+        function downloadCSV(csv, filename) {
+            const BOM = "\uFEFF"; // Byte Order Mark para compatibilidade com Excel
+            const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         // Lógica do botão de Administração
