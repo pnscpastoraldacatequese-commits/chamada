@@ -123,6 +123,9 @@
                     showModal("Nenhuma turma encontrada. Por favor, adicione turmas na seção de Administração.");
                     document.getElementById('admin-info').style.display = 'block';
                 }
+                
+                // Ordena as turmas por nome em ordem alfabética
+                classes.sort((a, b) => a.name.localeCompare(b.name));
 
                 classes.forEach(cls => {
                     const li = document.createElement('li');
@@ -350,25 +353,33 @@
                 if (!db) throw new Error("Firestore is not initialized.");
                 const classesCollectionRef = collection(db, `artifacts/${appId}/public/data/classes`);
                 const querySnapshot = await getDocs(classesCollectionRef);
+                const classes = [];
                 querySnapshot.forEach(doc => {
+                    classes.push({ id: doc.id, name: doc.data().name });
+                });
+
+                // Ordena as turmas por nome em ordem alfabética
+                classes.sort((a, b) => a.name.localeCompare(b.name));
+
+                classes.forEach(cls => {
                     const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.innerText = doc.data().name;
+                    option.value = cls.id;
+                    option.innerText = cls.name;
                     classSelect.appendChild(option);
 
                     const editOption = document.createElement('option');
-                    editOption.value = doc.id;
-                    editOption.innerText = doc.data().name;
+                    editOption.value = cls.id;
+                    editOption.innerText = cls.name;
                     editClassSelect.appendChild(editOption);
 
                     const transferOption = document.createElement('option');
-                    transferOption.value = doc.id;
-                    transferOption.innerText = doc.data().name;
+                    transferOption.value = cls.id;
+                    transferOption.innerText = cls.name;
                     transferClassSelect.appendChild(transferOption);
                     
                     const reportOption = document.createElement('option');
-                    reportOption.value = doc.id;
-                    reportOption.innerText = doc.data().name;
+                    reportOption.value = cls.id;
+                    reportOption.innerText = cls.name;
                     reportClassSelect.appendChild(reportOption);
                 });
             } catch (error) {
