@@ -151,7 +151,10 @@
             window.location.hash = classId; // Adiciona o ID da turma na URL
 
             const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
-            document.getElementById('class-title').innerText = classDoc.data()?.name || 'Turma Desconhecida';
+            const className = classDoc.data()?.name || 'Turma Desconhecida';
+            const catechistName = classDoc.data()?.catechist || 'Catequista não informado';
+            document.getElementById('class-title').innerText = className;
+            document.getElementById('catechist-name').innerText = `Catequista: ${catechistName}`;
 
             // Carrega os catequizandos para a turma selecionada do Firestore
             try {
@@ -218,7 +221,7 @@
             if (className.toLowerCase().includes('terça')) {
                 classDatesToUse = classDatesTuesday;
             } else if (className.toLowerCase().includes('sábado')) {
-                classDatesToUse = classDatesSaturday;
+                classDatesTouse = classDatesSaturday;
             } else {
                 classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
             }
@@ -430,8 +433,10 @@
             event.preventDefault();
             const classIdInput = document.getElementById('new-class-id');
             const classNameInput = document.getElementById('new-class-name');
+            const catechistNameInput = document.getElementById('new-catechist-name');
             const classId = classIdInput.value.trim();
             const className = classNameInput.value.trim();
+            const catechistName = catechistNameInput.value.trim();
 
             if (!classId || !className) {
                 showModal("Preencha o ID e o nome da turma.");
@@ -443,10 +448,12 @@
                 const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
                 await setDoc(classRef, {
                     name: className,
+                    catechist: catechistName,
                     createdAt: new Date().toISOString()
                 });
                 classIdInput.value = '';
                 classNameInput.value = '';
+                catechistNameInput.value = '';
                 showModal(`Turma "${className}" adicionada com sucesso!`);
                 await loadClassesForAdmin(); // Atualiza a lista de turmas no painel
                 await loadClasses(); // Atualiza a lista de turmas na tela principal
@@ -488,29 +495,74 @@
             const classId = document.getElementById('edit-class-select').value;
             const newClassName = document.getElementById('edit-class-name').value;
             const newClassId = document.getElementById('edit-class-id').value;
-            if (!classId || !newClassName || !newClassId) {
-                showModal("Preencha o ID e o nome da turma.");
+            const catechistName = document.getElementById('edit-catechist-name').value;
+
+            if (!classId) {
+                showModal("Selecione uma turma para editar.");
                 return;
             }
-            try {
+
+            const updateData = {};
+            if (newClassName.trim()) {
+                updateData.name = newClassName;
+            }
+            if (newClassId.trim()) {
+                // Se o ID for alterado, move os documentos
                 if (classId !== newClassId) {
-                    // Move a turma e seus catequizandos para o novo ID
-                    const oldDocRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
-                    const newDocRef = doc(db, `artifacts/${appId}/public/data/classes`, newClassId);
-                    const oldDoc = await getDoc(oldDocRef);
-                    await setDoc(newDocRef, oldDoc.data());
-                    await updateDoc(newDocRef, { name: newClassName });
-                    const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
-                    const q = query(catechumensRef, where("classId", "==", classId));
-                    const querySnapshot = await getDocs(q);
-                    querySnapshot.forEach(async (docSnap) => {
-                        await updateDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, docSnap.id), { classId: newClassId });
-                    });
-                    await deleteDoc(oldDocRef);
-                } else {
-                    const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
-                    await updateDoc(classRef, { name: newClassName });
+                    // Confirma a alteração do ID
+                    if (!confirm(`Tem certeza que deseja alterar o ID da turma de "${classId}" para "${newClassId}"? Todos os registros de presença serão movidos.`)) {
+                        return;
+                    }
+                    try {
+                        const oldDocRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
+                        const newDocRef = doc(db, `artifacts/${appId}/public/data/classes`, newClassId);
+                        const oldDoc = await getDoc(oldDocRef);
+                        
+                        if (oldDoc.exists()) {
+                            await setDoc(newDocRef, oldDoc.data());
+                            await updateDoc(newDocRef, { name: newClassName || oldDoc.data().name, catechist: catechistName || oldDoc.data().catechist });
+                            
+                            // Atualiza os catequizandos
+                            const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+                            const q = query(catechumensRef, where("classId", "==", classId));
+                            const querySnapshot = await getDocs(q);
+                            querySnapshot.forEach(async (docSnap) => {
+                                await updateDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, docSnap.id), { classId: newClassId });
+                            });
+                            
+                            // Atualiza os registros de presença
+                            const presencesRef = collection(db, `artifacts/${appId}/public/data/presences`);
+                            const qPresences = query(presencesRef, where("classId", "==", classId));
+                            const presencesSnapshot = await getDocs(qPresences);
+                            presencesSnapshot.forEach(async (docSnap) => {
+                                await updateDoc(doc(db, `artifacts/${appId}/public/data/presences`, docSnap.id), { classId: newClassId });
+                            });
+
+                            await deleteDoc(oldDocRef);
+                            showModal(`Turma e ID atualizados com sucesso!`);
+                            await loadClassesForAdmin();
+                            await loadClasses();
+                            return;
+                        }
+                    } catch (error) {
+                        console.error("Erro ao alterar o ID da turma:", error);
+                        showModal("Erro ao alterar o ID da turma. Verifique a conexão.");
+                        return;
+                    }
                 }
+            }
+            if (catechistName.trim()) {
+                updateData.catechist = catechistName;
+            }
+
+            if (Object.keys(updateData).length === 0) {
+                showModal("Nenhum campo preenchido para atualização.");
+                return;
+            }
+            
+            try {
+                const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
+                await updateDoc(classRef, updateData);
                 showModal(`Turma atualizada com sucesso!`);
                 await loadClassesForAdmin();
                 await loadClasses();
@@ -856,8 +908,9 @@
                         <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
                         <form id="add-class-form">
                             <div class="flex flex-col md:flex-row gap-2">
-                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-catechist-name" placeholder="Nome do catequista" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
                             </div>
                         </form>
@@ -873,6 +926,7 @@
                                 </select>
                                 <input type="text" id="edit-class-name" placeholder="Novo nome da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="edit-class-id" placeholder="Novo ID da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="edit-catechist-name" placeholder="Novo nome do catequista" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             </div>
                             <div class="flex gap-2">
                                 <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
@@ -989,13 +1043,18 @@
 
                 <!-- Seção de Registro de Presença -->
                 <div id="presence-section" class="hidden">
-                    <div class="flex items-center justify-between mb-4">
-                        <button id="back-button" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                        <h2 id="class-title" class="text-xl md:text-2xl font-semibold text-center flex-grow"></h2>
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
+                        <div class="flex items-center mb-2 md:mb-0">
+                            <button id="back-button" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <h2 id="class-title" class="text-xl md:text-2xl font-semibold"></h2>
+                                <span id="catechist-name" class="text-sm text-gray-500 md:text-base"></span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Tabela de Presença de Encontros -->
