@@ -310,8 +310,22 @@
         // --- Funções do Painel de Administração ---
         window.openAdminPanel = async function() {
             document.getElementById('admin-modal').style.display = 'flex';
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('management-section').style.display = 'block';
             await loadClassesForAdmin();
             await loadCatechumensForAdmin();
+        }
+        
+        // Função para abrir a seção de relatórios
+        function openReportsSection() {
+            document.getElementById('reports-section').style.display = 'block';
+            document.getElementById('management-section').style.display = 'none';
+        }
+        
+        // Função para abrir a seção de gerenciamento
+        function openManagementSection() {
+            document.getElementById('reports-section').style.display = 'none';
+            document.getElementById('management-section').style.display = 'block';
         }
 
         window.closeAdminPanel = function() {
@@ -325,29 +339,34 @@
             editClassSelect.innerHTML = '';
             const transferClassSelect = document.getElementById('edit-catechumen-class-transfer');
             transferClassSelect.innerHTML = '<option value="" disabled selected>Transferir para outra turma</option>';
+            const reportClassSelect = document.getElementById('report-class-select');
+            reportClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
+
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
                 const classesCollectionRef = collection(db, `artifacts/${appId}/public/data/classes`);
                 const querySnapshot = await getDocs(classesCollectionRef);
                 querySnapshot.forEach(doc => {
-                    // Preenche o seletor de adicionar catequizando
                     const option = document.createElement('option');
                     option.value = doc.id;
                     option.innerText = doc.data().name;
                     classSelect.appendChild(option);
 
-                    // Preenche o seletor de editar turma
                     const editOption = document.createElement('option');
                     editOption.value = doc.id;
                     editOption.innerText = doc.data().name;
                     editClassSelect.appendChild(editOption);
 
-                    // Preenche o seletor de transferência de catequizando
                     const transferOption = document.createElement('option');
                     transferOption.value = doc.id;
                     transferOption.innerText = doc.data().name;
                     transferClassSelect.appendChild(transferOption);
+                    
+                    const reportOption = document.createElement('option');
+                    reportOption.value = doc.id;
+                    reportOption.innerText = doc.data().name;
+                    reportClassSelect.appendChild(reportOption);
                 });
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
@@ -358,6 +377,9 @@
         async function loadCatechumensForAdmin() {
             const editCatechumenSelect = document.getElementById('edit-catechumen-select');
             editCatechumenSelect.innerHTML = '<option value="" disabled selected>Selecione o Catequizando</option>';
+            const reportCatechumenSelect = document.getElementById('report-catechumen-select');
+            reportCatechumenSelect.innerHTML = '<option value="" disabled selected>Selecione o Catequizando</option>';
+
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
                 const catechumensCollectionRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
@@ -367,6 +389,11 @@
                     option.value = doc.id;
                     option.innerText = `${doc.data().name} (${doc.data().classId})`;
                     editCatechumenSelect.appendChild(option);
+                    
+                    const reportOption = document.createElement('option');
+                    reportOption.value = doc.id;
+                    reportOption.innerText = `${doc.data().name} (${doc.data().classId})`;
+                    reportCatechumenSelect.appendChild(reportOption);
                 });
             } catch (error) {
                 console.error("Erro ao carregar catequizandos para o admin:", error);
@@ -547,6 +574,135 @@
             }
         }
 
+        // --- Funções de Relatórios ---
+        window.generateReportByClass = async function() {
+            const classId = document.getElementById('report-class-select').value;
+            if (!classId) {
+                showModal("Selecione uma turma para gerar o relatório.");
+                return;
+            }
+
+            // Carrega os catequizandos da turma
+            const catechumensInClass = [];
+            const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+            const qCatechumens = query(catechumensRef, where("classId", "==", classId));
+            const querySnapshotCatechumens = await getDocs(qCatechumens);
+            querySnapshotCatechumens.forEach(doc => {
+                catechumensInClass.push({ id: doc.id, name: doc.data().name });
+            });
+            
+            if (catechumensInClass.length === 0) {
+                showModal("Nenhum catequizando encontrado nesta turma para gerar o relatório.");
+                return;
+            }
+            
+            // Carrega todos os registros de presença
+            const allPresence = [];
+            const presenceRef = collection(db, `artifacts/${appId}/public/data/presences`);
+            const qPresence = query(presenceRef, where("classId", "==", classId));
+            const querySnapshotPresence = await getDocs(qPresence);
+            querySnapshotPresence.forEach(doc => {
+                allPresence.push(doc.data());
+            });
+
+            // Lógica de cálculo de presença e faltas
+            const totalEvents = classDatesTuesday.length + massDates.length; // Assumindo todas as turmas de terça por padrão
+            const reportData = catechumensInClass.map(cat => {
+                const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
+                const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
+                const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
+                const percent = totalEvents > 0 ? ((presenceCount / totalEvents) * 100).toFixed(2) : 0;
+                return {
+                    name: cat.name,
+                    presence: presenceCount,
+                    absence: absenceCount,
+                    justified: justifiedAbsenceCount,
+                    percentage: percent
+                };
+            });
+            
+            const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
+            const className = classDoc.data()?.name || 'Turma';
+
+            let reportHtml = `
+                <h4 class="text-xl font-bold mb-4">Relatório da Turma: ${className}</h4>
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th class="p-2">Nome</th>
+                                <th class="p-2">Presença</th>
+                                <th class="p-2">Falta</th>
+                                <th class="p-2">Falta Justificada</th>
+                                <th class="p-2">% Presença</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${reportData.map(data => `
+                                <tr>
+                                    <td class="p-2">${data.name}</td>
+                                    <td class="p-2">${data.presence}</td>
+                                    <td class="p-2">${data.absence}</td>
+                                    <td class="p-2">${data.justified}</td>
+                                    <td class="p-2">${data.percentage}%</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('report-results').innerHTML = reportHtml;
+        }
+
+        window.generateReportByCatechumen = async function() {
+            const catechumenId = document.getElementById('report-catechumen-select').value;
+            if (!catechumenId) {
+                showModal("Selecione um catequizando para gerar o relatório.");
+                return;
+            }
+
+            const allPresence = [];
+            const presenceRef = collection(db, `artifacts/${appId}/public/data/presences`);
+            const qPresence = query(presenceRef, where("catechumenId", "==", catechumenId));
+            const querySnapshotPresence = await getDocs(qPresence);
+            querySnapshotPresence.forEach(doc => {
+                allPresence.push(doc.data());
+            });
+            
+            if (allPresence.length === 0) {
+                 showModal("Nenhum registro de presença encontrado para este catequizando.");
+                return;
+            }
+            
+            const catechumenDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId));
+            const catechumenName = catechumenDoc.data()?.name || 'Catequizando';
+            const className = catechumenDoc.data()?.classId || 'Turma Desconhecida';
+
+
+            let reportHtml = `
+                <h4 class="text-xl font-bold mb-4">Relatório de Presença - ${catechumenName} (${className})</h4>
+                <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                            <tr>
+                                <th class="p-2">Data</th>
+                                <th class="p-2">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${allPresence.map(data => `
+                                <tr>
+                                    <td class="p-2">${data.date.split('-').reverse().join('/')}</td>
+                                    <td class="p-2">${data.status}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            document.getElementById('report-results').innerHTML = reportHtml;
+
+        }
 
         // Lógica do botão de Administração
         document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
@@ -563,6 +719,13 @@
         document.getElementById('close-modal-button').addEventListener('click', closeModal);
         document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
         
+        // Conecta os botões de navegação do painel
+        document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
+        document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
+        
+        // Conecta os botões de relatórios
+        document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
+        document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
 
         // Inicia a aplicação quando a janela carrega
         window.onload = initializeAuth;
@@ -582,75 +745,114 @@
 
     <!-- Modal para Painel de Administração -->
     <div id="admin-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 z-50 hidden items-center justify-center">
-        <div class="bg-white p-6 rounded-2xl shadow-lg w-11/12 max-w-2xl">
+        <div class="bg-white p-6 rounded-2xl shadow-lg w-11/12 max-w-4xl">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-2xl font-semibold">Painel de Administração</h3>
                 <button id="close-admin-panel-button" class="text-gray-500 hover:text-gray-800 transition-colors">&times;</button>
             </div>
             
             <div class="space-y-6">
-                <!-- Seção Adicionar Turma -->
-                <div class="bg-gray-100 p-4 rounded-xl">
-                    <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
-                    <form id="add-class-form">
-                        <div class="flex flex-col md:flex-row gap-2">
-                            <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA_8H30)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
-                        </div>
-                    </form>
-                </div>
-                
-                <!-- Seção Editar/Excluir Turma -->
-                <div class="bg-gray-100 p-4 rounded-xl">
-                    <h4 class="text-lg font-bold mb-2">Editar/Excluir Turma</h4>
-                    <form id="edit-class-form">
-                        <div class="flex flex-col md:flex-row gap-2 mb-2">
-                            <select id="edit-class-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="" disabled selected>Selecione a Turma</option>
-                            </select>
-                            <input type="text" id="edit-class-name" placeholder="Novo nome da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <input type="text" id="edit-class-id" placeholder="Novo ID da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div class="flex gap-2">
-                            <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
-                            <button type="button" id="delete-class-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
-                        </div>
-                    </form>
+                <!-- Abas de navegação -->
+                <div class="flex justify-center border-b border-gray-200">
+                    <button id="management-tab-button" class="py-2 px-4 text-center text-indigo-600 font-semibold border-b-2 border-indigo-600 focus:outline-none">Gerenciamento</button>
+                    <button id="reports-tab-button" class="py-2 px-4 text-center text-gray-600 font-semibold border-b-2 border-transparent hover:border-gray-300 focus:outline-none">Relatórios</button>
                 </div>
 
-                <!-- Seção Adicionar Catequizando -->
-                <div class="bg-gray-100 p-4 rounded-xl">
-                    <h4 class="text-lg font-bold mb-2">Adicionar Catequizando</h4>
-                    <form id="add-catechumen-form">
-                        <div class="flex flex-col md:flex-row gap-2 mb-2">
-                            <input type="text" id="new-catechumen-name" placeholder="Nome do catequizando" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <select id="new-catechumen-class" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <!-- Seção de Gerenciamento -->
+                <div id="management-section">
+                    <!-- Seção Adicionar Turma -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
+                        <form id="add-class-form">
+                            <div class="flex flex-col md:flex-row gap-2">
+                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA_8H30)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Seção Editar/Excluir Turma -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Editar/Excluir Turma</h4>
+                        <form id="edit-class-form">
+                            <div class="flex flex-col md:flex-row gap-2 mb-2">
+                                <select id="edit-class-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="" disabled selected>Selecione a Turma</option>
+                                </select>
+                                <input type="text" id="edit-class-name" placeholder="Novo nome da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="edit-class-id" placeholder="Novo ID da turma" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
+                                <button type="button" id="delete-class-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Seção Adicionar Catequizando -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Adicionar Catequizando</h4>
+                        <form id="add-catechumen-form">
+                            <div class="flex flex-col md:flex-row gap-2 mb-2">
+                                <input type="text" id="new-catechumen-name" placeholder="Nome do catequizando" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select id="new-catechumen-class" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="" disabled selected>Selecione a Turma</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar Catequizando</button>
+                        </form>
+                    </div>
+                    
+                    <!-- Seção Editar/Excluir Catequizando -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
+                        <form id="edit-catechumen-form">
+                            <div class="flex flex-col md:flex-row gap-2 mb-2">
+                                <select id="edit-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="" disabled selected>Selecione o Catequizando</option>
+                                </select>
+                                <input type="text" id="edit-catechumen-name" placeholder="Novo nome do catequizando" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <select id="edit-catechumen-class-transfer" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="" disabled selected>Transferir para outra turma</option>
+                                </select>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
+                                <button type="button" id="delete-catechumen-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Seção de Relatórios -->
+                <div id="reports-section" class="hidden">
+                    <!-- Relatório por Turma -->
+                    <div class="bg-gray-100 p-4 rounded-xl mb-4">
+                        <h4 class="text-lg font-bold mb-2">Relatório por Turma</h4>
+                        <div class="flex flex-col md:flex-row gap-2">
+                            <select id="report-class-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="" disabled selected>Selecione a Turma</option>
                             </select>
+                            <button id="generate-class-report-button" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Gerar Relatório</button>
                         </div>
-                        <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar Catequizando</button>
-                    </form>
-                </div>
-                
-                <!-- Seção Editar/Excluir Catequizando -->
-                <div class="bg-gray-100 p-4 rounded-xl">
-                    <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
-                    <form id="edit-catechumen-form">
-                        <div class="flex flex-col md:flex-row gap-2 mb-2">
-                            <select id="edit-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <!-- Relatório por Catequizando -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Relatório por Catequizando</h4>
+                        <div class="flex flex-col md:flex-row gap-2">
+                            <select id="report-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <option value="" disabled selected>Selecione o Catequizando</option>
                             </select>
-                            <input type="text" id="edit-catechumen-name" placeholder="Novo nome do catequizando" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <select id="edit-catechumen-class-transfer" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option value="" disabled selected>Transferir para outra turma</option>
-                            </select>
+                            <button id="generate-catechumen-report-button" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Gerar Relatório</button>
                         </div>
-                        <div class="flex gap-2">
-                            <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
-                            <button type="button" id="delete-catechumen-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
-                        </div>
-                    </form>
+                    </div>
+
+                    <!-- Área de resultados do relatório -->
+                    <div id="report-results" class="mt-6 p-4 bg-white rounded-xl shadow-inner">
+                        <p class="text-gray-500 text-center">Os relatórios aparecerão aqui.</p>
+                    </div>
                 </div>
             </div>
         </div>
