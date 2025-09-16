@@ -93,7 +93,15 @@
         async function setupUI() {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
-            await loadClasses();
+
+            const urlHash = window.location.hash.substring(1);
+            if (urlHash) {
+                // Se a URL tiver um ID de turma, carrega direto
+                await selectClass(urlHash);
+            } else {
+                // Caso contrário, mostra a lista de turmas
+                await loadClasses();
+            }
         }
 
         // Função para carregar as turmas do Firestore
@@ -134,6 +142,8 @@
             selectedClass = classId;
             document.getElementById('class-selector-section').style.display = 'none';
             document.getElementById('presence-section').style.display = 'block';
+            
+            window.location.hash = classId; // Adiciona o ID da turma na URL
 
             const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
             document.getElementById('class-title').innerText = classDoc.data()?.name || 'Turma Desconhecida';
@@ -165,6 +175,7 @@
         function backToClasses() {
             selectedClass = null;
             catechumens = [];
+            window.location.hash = ''; // Remove o ID da turma da URL
             document.getElementById('class-selector-section').style.display = 'block';
             document.getElementById('presence-section').style.display = 'none';
         }
@@ -327,20 +338,25 @@
         
         window.addTurma = async function(event) {
             event.preventDefault();
-            const className = document.getElementById('new-class-name').value;
-            if (!className.trim()) {
-                showModal("O nome da turma não pode estar vazio.");
+            const classIdInput = document.getElementById('new-class-id');
+            const classNameInput = document.getElementById('new-class-name');
+            const classId = classIdInput.value.trim();
+            const className = classNameInput.value.trim();
+
+            if (!classId || !className) {
+                showModal("Preencha o ID e o nome da turma.");
                 return;
             }
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
-                const classesCollectionRef = collection(db, `artifacts/${appId}/public/data/classes`);
-                await addDoc(classesCollectionRef, {
+                const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
+                await setDoc(classRef, {
                     name: className,
                     createdAt: new Date().toISOString()
                 });
-                document.getElementById('new-class-name').value = '';
+                classIdInput.value = '';
+                classNameInput.value = '';
                 showModal(`Turma "${className}" adicionada com sucesso!`);
                 await loadClassesForAdmin(); // Atualiza a lista de turmas no painel
                 await loadClasses(); // Atualiza a lista de turmas na tela principal
@@ -418,6 +434,7 @@
                     <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
                     <form id="add-class-form">
                         <div class="flex flex-col md:flex-row gap-2">
+                            <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA_8H30)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                             <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
                         </div>
