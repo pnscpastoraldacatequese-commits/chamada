@@ -164,6 +164,9 @@
                     catechumens.push({ id: doc.id, name: doc.data().name });
                 });
 
+                // Ordena os catequizandos por nome em ordem alfabética
+                catechumens.sort((a, b) => a.name.localeCompare(b.name));
+
                 if (catechumens.length === 0) {
                     showModal("Nenhum catequizando encontrado para esta turma. Por favor, adicione catequizandos na seção de Administração.");
                 }
