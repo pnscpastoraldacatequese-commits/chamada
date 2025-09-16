@@ -387,15 +387,23 @@
                 if (!db) throw new Error("Firestore is not initialized.");
                 const catechumensCollectionRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
                 const querySnapshot = await getDocs(catechumensCollectionRef);
+                const catechumens = [];
                 querySnapshot.forEach(doc => {
+                    catechumens.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // Ordena os catequizandos por nome em ordem alfabética
+                catechumens.sort((a, b) => a.name.localeCompare(b.name));
+
+                catechumens.forEach(cat => {
                     const option = document.createElement('option');
-                    option.value = doc.id;
-                    option.innerText = `${doc.data().name} (${doc.data().classId})`;
+                    option.value = cat.id;
+                    option.innerText = `${cat.name} (${cat.classId})`;
                     editCatechumenSelect.appendChild(option);
                     
                     const reportOption = document.createElement('option');
-                    reportOption.value = doc.id;
-                    reportOption.innerText = `${doc.data().name} (${doc.data().classId})`;
+                    reportOption.value = cat.id;
+                    reportOption.innerText = `${cat.name} (${cat.classId})`;
                     reportCatechumenSelect.appendChild(reportOption);
                 });
             } catch (error) {
@@ -768,7 +776,7 @@
                         <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
                         <form id="add-class-form">
                             <div class="flex flex-col md:flex-row gap-2">
-                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA_8H30)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
                             </div>
@@ -815,7 +823,7 @@
                                 <select id="edit-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="" disabled selected>Selecione o Catequizando</option>
                                 </select>
-                                <input type="text" id="edit-catechumen-name" placeholder="Altera nome" nome do catequizando" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="edit-catechumen-name" placeholder="Altera nome" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <select id="edit-catechumen-class-transfer" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="" disabled selected>Transferir para turma</option>
                                 </select>
