@@ -323,6 +323,8 @@
             classSelect.innerHTML = '';
             const editClassSelect = document.getElementById('edit-class-select');
             editClassSelect.innerHTML = '';
+            const transferClassSelect = document.getElementById('edit-catechumen-class-transfer');
+            transferClassSelect.innerHTML = '<option value="" disabled selected>Transferir para outra turma</option>';
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
@@ -340,6 +342,12 @@
                     editOption.value = doc.id;
                     editOption.innerText = doc.data().name;
                     editClassSelect.appendChild(editOption);
+
+                    // Preenche o seletor de transferência de catequizando
+                    const transferOption = document.createElement('option');
+                    transferOption.value = doc.id;
+                    transferOption.innerText = doc.data().name;
+                    transferClassSelect.appendChild(transferOption);
                 });
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
@@ -349,7 +357,7 @@
         
         async function loadCatechumensForAdmin() {
             const editCatechumenSelect = document.getElementById('edit-catechumen-select');
-            editCatechumenSelect.innerHTML = '';
+            editCatechumenSelect.innerHTML = '<option value="" disabled selected>Selecione o Catequizando</option>';
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
                 const catechumensCollectionRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
@@ -491,13 +499,27 @@
             const catechumenId = document.getElementById('edit-catechumen-select').value;
             const newCatechumenName = document.getElementById('edit-catechumen-name').value;
             const newClassId = document.getElementById('edit-catechumen-class-transfer').value;
-            if (!catechumenId || !newCatechumenName || !newClassId) {
-                showModal("Preencha todos os campos para editar o catequizando.");
+            if (!catechumenId) {
+                showModal("Selecione um catequizando para editar.");
                 return;
             }
+
+            const updateData = {};
+            if (newCatechumenName.trim()) {
+                updateData.name = newCatechumenName;
+            }
+            if (newClassId) {
+                updateData.classId = newClassId;
+            }
+            
+            if (Object.keys(updateData).length === 0) {
+                showModal("Preencha o nome ou selecione uma nova turma para atualizar.");
+                return;
+            }
+            
             try {
                 const catechumenRef = doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId);
-                await updateDoc(catechumenRef, { name: newCatechumenName, classId: newClassId });
+                await updateDoc(catechumenRef, updateData);
                 showModal(`Catequizando atualizado com sucesso!`);
                 await loadCatechumensForAdmin();
             } catch (error) {
