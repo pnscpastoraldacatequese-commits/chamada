@@ -100,6 +100,7 @@
                 await selectClass(urlHash);
             } else {
                 // Caso contrário, mostra a lista de turmas
+                document.getElementById('admin-button').style.display = 'block';
                 await loadClasses();
             }
         }
@@ -142,6 +143,7 @@
             selectedClass = classId;
             document.getElementById('class-selector-section').style.display = 'none';
             document.getElementById('presence-section').style.display = 'block';
+            document.getElementById('admin-button').style.display = 'none'; // Esconde o botão de admin
             
             window.location.hash = classId; // Adiciona o ID da turma na URL
 
@@ -178,6 +180,7 @@
             window.location.hash = ''; // Remove o ID da turma da URL
             document.getElementById('class-selector-section').style.display = 'block';
             document.getElementById('presence-section').style.display = 'none';
+            document.getElementById('admin-button').style.display = 'block'; // Mostra o botão de admin
         }
 
         // Função para ouvir os dados de presença em tempo real
@@ -812,7 +815,7 @@
                                 <select id="edit-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="" disabled selected>Selecione o Catequizando</option>
                                 </select>
-                                <input type="text" id="edit-catechumen-name" placeholder="Altera nome" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="edit-catechumen-name" placeholder="Altera nome" nome do catequizando" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <select id="edit-catechumen-class-transfer" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                     <option value="" disabled selected>Transferir para turma</option>
                                 </select>
@@ -887,7 +890,7 @@
 
                 <!-- Seção de Seleção de Turma -->
                 <div id="class-selector-section">
-                    <h2 class="text-xl md:text-2xl font-semibold mb-4 text-center">Selecione sua Turma</h2>
+                    <h2 class="text-xl md:text-2xl font-semibold mb-4 text-center">Selecione a Turma</h2>
                     <p id="admin-info" class="text-center text-sm text-gray-500 mb-4 hidden">
                         Para adicionar turmas, clique no botão "Administração" acima.
                     </p>
