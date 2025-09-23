@@ -109,7 +109,7 @@
         async function loadClasses() {
             const classesList = document.getElementById('classes-list');
             classesList.innerHTML = '';
-            
+
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
                 const classesCollectionRef = collection(db, `artifacts/${appId}/public/data/classes`);
@@ -123,7 +123,7 @@
                     showModal("Nenhuma turma encontrada. Por favor, adicione turmas na seção de Administração.");
                     document.getElementById('admin-info').style.display = 'block';
                 }
-                
+
                 // Ordena as turmas por nome em ordem alfabética
                 classes.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -147,7 +147,7 @@
             document.getElementById('class-selector-section').style.display = 'none';
             document.getElementById('presence-section').style.display = 'block';
             document.getElementById('admin-button').style.display = 'none'; // Esconde o botão de admin
-            
+
             window.location.hash = classId; // Adiciona o ID da turma na URL
 
             const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
@@ -328,20 +328,12 @@
             await loadCatechumensForAdmin();
         }
 
-        // Função para limpar os campos de edição de turma
-        function clearEditClassFields() {
-            document.getElementById('edit-class-select').value = '';
-            document.getElementById('edit-class-name').value = '';
-            document.getElementById('edit-class-id').value = '';
-            document.getElementById('edit-catechist-name').value = '';
-        }
-        
         // Função para abrir a seção de relatórios
         function openReportsSection() {
             document.getElementById('reports-section').style.display = 'block';
             document.getElementById('management-section').style.display = 'none';
         }
-        
+
         // Função para abrir a seção de gerenciamento
         function openManagementSection() {
             document.getElementById('reports-section').style.display = 'none';
@@ -354,6 +346,7 @@
 
         async function loadClassesForAdmin() {
             const classSelect = document.getElementById('new-catechumen-class');
+            classSelect.innerHTML = '';
             classSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const editClassSelect = document.getElementById('edit-class-select');
             editClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
@@ -362,7 +355,6 @@
             const reportClassSelect = document.getElementById('report-class-select');
             reportClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
 
-            clearEditClassFields();
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
@@ -391,7 +383,7 @@
                     transferOption.value = cls.id;
                     transferOption.innerText = cls.name;
                     transferClassSelect.appendChild(transferOption);
-                    
+
                     const reportOption = document.createElement('option');
                     reportOption.value = cls.id;
                     reportOption.innerText = cls.name;
@@ -403,7 +395,7 @@
                 showModal("Erro ao carregar as turmas para o painel de administração.");
             }
         }
-        
+
         async function loadCatechumensForAdmin() {
             const editCatechumenSelect = document.getElementById('edit-catechumen-select');
             editCatechumenSelect.innerHTML = '<option value="" disabled selected>Selecione o Catequizando</option>';
@@ -418,7 +410,7 @@
                 querySnapshot.forEach(doc => {
                     catechumens.push({ id: doc.id, ...doc.data() });
                 });
-                
+
                 // Ordena os catequizandos por nome em ordem alfabética
                 catechumens.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -427,7 +419,7 @@
                     option.value = cat.id;
                     option.innerText = `${cat.name} (${cat.classId})`;
                     editCatechumenSelect.appendChild(option);
-                    
+
                     const reportOption = document.createElement('option');
                     reportOption.value = cat.id;
                     reportOption.innerText = `${cat.name} (${cat.classId})`;
@@ -472,7 +464,7 @@
                 showModal("Erro ao adicionar a turma. Verifique a conexão.");
             }
         }
-        
+
         window.addCatequizando = async function(event) {
             event.preventDefault();
             const catechumenName = document.getElementById('new-catechumen-name').value;
@@ -499,7 +491,7 @@
                 showModal("Erro ao adicionar o catequizando. Verifique a conexão.");
             }
         }
-        
+
         window.editTurma = async function(event) {
             event.preventDefault();
             const classId = document.getElementById('edit-class-select').value;
@@ -527,11 +519,11 @@
                         const oldDocRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
                         const newDocRef = doc(db, `artifacts/${appId}/public/data/classes`, newClassId);
                         const oldDoc = await getDoc(oldDocRef);
-                        
+
                         if (oldDoc.exists()) {
                             await setDoc(newDocRef, oldDoc.data());
                             await updateDoc(newDocRef, { name: newClassName || oldDoc.data().name, catechist: catechistName || oldDoc.data().catechist });
-                            
+
                             // Atualiza os catequizandos
                             const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
                             const q = query(catechumensRef, where("classId", "==", classId));
@@ -539,7 +531,7 @@
                             querySnapshot.forEach(async (docSnap) => {
                                 await updateDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, docSnap.id), { classId: newClassId });
                             });
-                            
+
                             // Atualiza os registros de presença
                             const presencesRef = collection(db, `artifacts/${appId}/public/data/presences`);
                             const qPresences = query(presencesRef, where("classId", "==", classId));
@@ -569,7 +561,7 @@
                 showModal("Nenhum campo preenchido para atualização.");
                 return;
             }
-            
+
             try {
                 const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
                 await updateDoc(classRef, updateData);
@@ -581,7 +573,7 @@
                 showModal("Erro ao editar a turma. Verifique a conexão.");
             }
         }
-        
+
         window.deleteTurma = async function() {
             const classId = document.getElementById('edit-class-select').value;
             if (!classId) {
@@ -625,12 +617,12 @@
             if (newClassId) {
                 updateData.classId = newClassId;
             }
-            
+
             if (Object.keys(updateData).length === 0) {
                 showModal("Preencha o nome ou selecione uma nova turma para atualizar.");
                 return;
             }
-            
+
             try {
                 const catechumenRef = doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId);
                 await updateDoc(catechumenRef, updateData);
@@ -641,7 +633,7 @@
                 showModal("Erro ao editar o catequizando. Verifique a conexão.");
             }
         }
-        
+
         window.deleteCatequizando = async function() {
             const catechumenId = document.getElementById('edit-catechumen-select').value;
             if (!catechumenId) {
@@ -680,12 +672,12 @@
             querySnapshotCatechumens.forEach(doc => {
                 catechumensInClass.push({ id: doc.id, name: doc.data().name });
             });
-            
+
             if (catechumensInClass.length === 0) {
                 showModal("Nenhum catequizando encontrado nesta turma para gerar o relatório.");
                 return;
             }
-            
+
             // Carrega todos os registros de presença
             const allPresence = [];
             const presenceRef = collection(db, `artifacts/${appId}/public/data/presences`);
@@ -707,11 +699,12 @@
                 classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
             }
             const totalEvents = classDatesToUse.length + massDates.length;
-            
+
             const reportData = catechumensInClass.map(cat => {
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
                 const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
+                // Alterado para calcular porcentagem de faltas (somente "Falta")
                 const absencePercentage = totalEvents > 0 ? ((absenceCount / totalEvents) * 100).toFixed(2) : 0;
                 return {
                     name: cat.name,
@@ -723,7 +716,7 @@
             });
 
             currentClassReportData = reportData; // Salva os dados para exportação
-            
+
             let reportHtml = `
                 <div class="flex justify-between items-center mb-4">
                     <h4 class="text-xl font-bold">Relatório da Turma: ${className}</h4>
@@ -772,12 +765,12 @@
             querySnapshotPresence.forEach(doc => {
                 allPresence.push(doc.data());
             });
-            
+
             if (allPresence.length === 0) {
                  showModal("Nenhum registro de presença encontrado para este catequizando.");
                 return;
             }
-            
+
             const catechumenDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId));
             const catechumenName = catechumenDoc.data()?.name || 'Catequizando';
             const className = catechumenDoc.data()?.classId || 'Turma Desconhecida';
@@ -811,7 +804,7 @@
             document.getElementById('report-results').innerHTML = reportHtml;
             document.getElementById('export-catechumen-report-button').addEventListener('click', window.exportCatechumenReportToCSV);
         }
-        
+
         // Função para exportar o relatório por turma
         window.exportClassReportToCSV = function() {
             if (!currentClassReportData) {
@@ -823,11 +816,11 @@
             currentClassReportData.forEach(row => {
                 csv += `"${row.name}",${row.presence},${row.absence},${row.justified},"${row.percentage}%"\n`;
             });
-            
+
             const className = document.getElementById('report-class-select').options[document.getElementById('report-class-select').selectedIndex].text;
             downloadCSV(csv, `relatorio_turma_${className}.csv`);
         }
-        
+
         // Função para exportar o relatório por catequizando
         window.exportCatechumenReportToCSV = function() {
              if (!currentCatechumenReportData) {
@@ -844,10 +837,11 @@
             const catechumenName = document.getElementById('report-catechumen-select').options[document.getElementById('report-catechumen-select').selectedIndex].text;
             downloadCSV(csv, `relatorio_catequizando_${catechumenName}.csv`);
         }
-        
+
         // Função utilitária para baixar o arquivo CSV
         function downloadCSV(csv, filename) {
             const BOM = "\uFEFF"; // Byte Order Mark para compatibilidade com Excel
+            const BOM = "\uFEff"; // Byte Order Mark para compatibilidade com Excel
             const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -858,49 +852,49 @@
         }
 
         // Lógica do botão de Administração
-        document.addEventListener('DOMContentLoaded', () => {
-          document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
-          document.getElementById('add-class-form').onsubmit = window.addTurma;
-          document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
-          document.getElementById('edit-class-form').onsubmit = window.editTurma;
-          document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
-          document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
-          document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
-          document.getElementById('clear-edit-class-fields-button').addEventListener('click', clearEditClassFields);
+        document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
+        document.getElementById('add-class-form').onsubmit = window.addTurma;
+        document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
+        document.getElementById('edit-class-form').onsubmit = window.editTurma;
+        document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
+        document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
+        document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
 
-          // Conecta os botões de fechar e voltar
-          document.getElementById('back-button').addEventListener('click', backToClasses);
-          document.getElementById('close-modal-button').addEventListener('click', closeModal);
-          document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
-          
-          // Conecta os botões de navegação do painel
-          document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
-          document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
-          
-          // Conecta os botões de relatórios
-          document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
-          document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
 
-          // Conecta o listener para preencher os campos de edição de turma
-          document.getElementById('edit-class-select').addEventListener('change', async (event) => {
-              const classId = event.target.value;
-              if (classId) {
-                  const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
-                  if (classDoc.exists()) {
-                      const data = classDoc.data();
-                      document.getElementById('edit-class-name').value = data.name || '';
-                      document.getElementById('edit-class-id').value = classId;
-                      document.getElementById('edit-catechist-name').value = data.catechist || '';
-                  }
-              } else {
-                  document.getElementById('edit-class-name').value = '';
-                  document.getElementById('edit-class-id').value = '';
-                  document.getElementById('edit-catechist-name').value = '';
-              }
-          });
+        // Conecta os botões de fechar e voltar
+        document.getElementById('back-button').addEventListener('click', backToClasses);
+        document.getElementById('close-modal-button').addEventListener('click', closeModal);
+        document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
 
-          initializeAuth();
+        // Conecta os botões de navegação do painel
+        document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
+        document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
+
+        // Conecta os botões de relatórios
+        document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
+        document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
+
+        // Conecta o listener para preencher os campos de edição de turma
+        document.getElementById('edit-class-select').addEventListener('change', async (event) => {
+            const classId = event.target.value;
+            if (classId) {
+                const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
+                if (classDoc.exists()) {
+                    const data = classDoc.data();
+                    document.getElementById('edit-class-name').value = data.name || '';
+                    document.getElementById('edit-class-id').value = classId;
+                    document.getElementById('edit-catechist-name').value = data.catechist || '';
+                }
+            } else {
+                document.getElementById('edit-class-name').value = '';
+                document.getElementById('edit-class-id').value = '';
+                document.getElementById('edit-catechist-name').value = '';
+            }
         });
+
+
+        // Inicia a aplicação quando a janela carrega
+        window.onload = initializeAuth;
     </script>
 </head>
 
@@ -922,7 +916,7 @@
                 <h3 class="text-2xl font-semibold">Painel de Administração</h3>
                 <button id="close-admin-panel-button" class="text-gray-500 hover:text-gray-800 transition-colors">&times;</button>
             </div>
-            
+
             <div class="space-y-6">
                 <!-- Abas de navegação -->
                 <div class="flex justify-center border-b border-gray-200">
@@ -944,7 +938,7 @@
                             </div>
                         </form>
                     </div>
-                    
+
                     <!-- Seção Editar/Excluir Turma -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Editar/Excluir Turma</h4>
@@ -960,7 +954,6 @@
                             <div class="flex gap-2">
                                 <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
                                 <button type="button" id="delete-class-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
-                                <button type="button" id="clear-edit-class-fields-button" class="bg-gray-500 text-white p-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors">Limpar Campos</button>
                             </div>
                         </form>
                     </div>
@@ -978,7 +971,7 @@
                             <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar Catequizando</button>
                         </form>
                     </div>
-                    
+
                     <!-- Seção Editar/Excluir Catequizando -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
@@ -1012,7 +1005,7 @@
                             <button id="generate-class-report-button" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Gerar Relatório</button>
                         </div>
                     </div>
-                    
+
                     <!-- Relatório por Catequizando -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Relatório por Catequizando</h4>
@@ -1027,6 +1020,94 @@
                     <!-- Área de resultados do relatório -->
                     <div id="report-results" class="mt-6 p-4 bg-white rounded-xl shadow-inner">
                         <p class="text-gray-500 text-center">Os relatórios aparecerão aqui.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Seção de Cabeçalho -->
+    <header class="bg-indigo-600 text-white p-6 md:p-8 shadow-md">
+        <div class="container mx-auto flex items-center justify-between">
+            <h1 class="text-2xl md:text-3xl font-bold">Registro de Presença</h1>
+            <!-- Botão de Administração -->
+            <button id="admin-button" class="bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2 px-4 rounded-full transition-colors">
+                Administração
+            </button>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto p-4 md:p-6 mt-4">
+        <!-- Estado de Carregamento -->
+        <div id="loading" class="flex items-center justify-center flex-col h-64 text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-indigo-500"></div>
+            <p class="mt-4 text-lg text-gray-600">Carregando...</p>
+        </div>
+
+        <!-- Conteúdo Principal da Aplicação -->
+        <div id="main-content" class="hidden">
+            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+                <div class="flex justify-end mb-4 text-sm text-gray-500">
+                    <span id="user-id-display"></span>
+                </div>
+
+                <!-- Seção de Seleção de Turma -->
+                <div id="class-selector-section">
+                    <h2 class="text-xl md:text-2xl font-semibold mb-4 text-center">Selecione a Turma</h2>
+                    <p id="admin-info" class="text-center text-sm text-gray-500 mb-4 hidden">
+                        Para adicionar turmas, clique no botão "Administração" acima.
+                    </p>
+                    <ul id="classes-list" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        <!-- Botões de turma serão injetados aqui via JS -->
+                    </ul>
+                </div>
+
+                <!-- Seção de Registro de Presença -->
+                <div id="presence-section" class="hidden">
+                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
+                        <div class="flex items-center mb-2 md:mb-0">
+                            <button id="back-button" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                            </button>
+                            <div>
+                                <h2 id="class-title" class="text-xl md:text-2xl font-semibold"></h2>
+                                <span id="catechist-name" class="text-sm text-gray-500 md:text-base"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabela de Presença de Encontros -->
+                    <h3 class="text-xl font-semibold mt-6 mb-2">Presença em Encontros</h3>
+                    <div class="overflow-x-auto relative shadow-md sm:rounded-lg mb-6">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr id="class-table-header">
+                                    <th>Nome</th>
+                                </tr>
+                            </thead>
+                            <tbody id="class-table-body">
+                                <!-- Dados da tabela serão injetados aqui via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Tabela de Presença de Missas -->
+                    <h3 class="text-xl font-semibold mb-2">Presença em Missas</h3>
+                    <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr id="mass-table-header">
+                                    <th>Nome</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mass-table-body">
+                                <!-- Dados da tabela serão injetados aqui via JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
