@@ -221,7 +221,7 @@
             if (className.toLowerCase().includes('terça')) {
                 classDatesToUse = classDatesTuesday;
             } else if (className.toLowerCase().includes('sábado')) {
-                classDatesTouse = classDatesSaturday;
+                classDatesToUse = classDatesSaturday;
             } else {
                 classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
             }
@@ -702,13 +702,14 @@
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
                 const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
-                const percent = totalEvents > 0 ? ((presenceCount / totalEvents) * 100).toFixed(2) : 0;
+                // Altera o cálculo para porcentagem de faltas
+                const absencePercentage = totalEvents > 0 ? (((absenceCount + justifiedAbsenceCount) / totalEvents) * 100).toFixed(2) : 0;
                 return {
                     name: cat.name,
                     presence: presenceCount,
                     absence: absenceCount,
                     justified: justifiedAbsenceCount,
-                    percentage: percent
+                    percentage: absencePercentage
                 };
             });
 
@@ -727,7 +728,7 @@
                                 <th class="p-2">Presença</th>
                                 <th class="p-2">Falta</th>
                                 <th class="p-2">Falta Justificada</th>
-                                <th class="p-2">% Presença</th>
+                                <th class="p-2">% Faltas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -809,7 +810,7 @@
                 return;
             }
 
-            let csv = "Nome,Presença,Falta,Falta Justificada,% Presença\n";
+            let csv = "Nome,Presença,Falta,Falta Justificada,% Faltas\n";
             currentClassReportData.forEach(row => {
                 csv += `"${row.name}",${row.presence},${row.absence},${row.justified},"${row.percentage}%"\n`;
             });
@@ -908,7 +909,7 @@
                         <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
                         <form id="add-class-form">
                             <div class="flex flex-col md:flex-row gap-2">
-                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-catechist-name" placeholder="Nome do catequista" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
