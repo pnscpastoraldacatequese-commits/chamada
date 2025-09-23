@@ -348,7 +348,7 @@
             const classSelect = document.getElementById('new-catechumen-class');
             classSelect.innerHTML = '';
             const editClassSelect = document.getElementById('edit-class-select');
-            editClassSelect.innerHTML = '';
+            editClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const transferClassSelect = document.getElementById('edit-catechumen-class-transfer');
             transferClassSelect.innerHTML = '<option value="" disabled selected>Transferir para outra turma</option>';
             const reportClassSelect = document.getElementById('report-class-select');
@@ -388,25 +388,6 @@
                     reportOption.innerText = cls.name;
                     reportClassSelect.appendChild(reportOption);
                 });
-
-                // Adiciona o listener de mudança para preencher os campos
-                editClassSelect.addEventListener('change', async (event) => {
-                    const classId = event.target.value;
-                    if (classId) {
-                        const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
-                        if (classDoc.exists()) {
-                            const data = classDoc.data();
-                            document.getElementById('edit-class-name').value = data.name;
-                            document.getElementById('edit-class-id').value = classId;
-                            document.getElementById('edit-catechist-name').value = data.catechist || '';
-                        }
-                    } else {
-                         document.getElementById('edit-class-name').value = '';
-                         document.getElementById('edit-class-id').value = '';
-                         document.getElementById('edit-catechist-name').value = '';
-                    }
-                });
-
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
                 showModal("Erro ao carregar as turmas para o painel de administração.");
