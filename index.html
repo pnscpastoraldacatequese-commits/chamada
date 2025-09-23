@@ -346,7 +346,7 @@
 
         async function loadClassesForAdmin() {
             const classSelect = document.getElementById('new-catechumen-class');
-            classSelect.innerHTML = '';
+            classSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const editClassSelect = document.getElementById('edit-class-select');
             editClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const transferClassSelect = document.getElementById('edit-catechumen-class-transfer');
@@ -388,6 +388,7 @@
                     reportOption.innerText = cls.name;
                     reportClassSelect.appendChild(reportOption);
                 });
+
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
                 showModal("Erro ao carregar as turmas para o painel de administração.");
@@ -838,7 +839,7 @@
         
         // Função utilitária para baixar o arquivo CSV
         function downloadCSV(csv, filename) {
-            const BOM = "\uFEFF"; // Byte Order Mark para compatibilidade com Excel
+            const BOM = "\uFEff"; // Byte Order Mark para compatibilidade com Excel
             const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
