@@ -702,8 +702,8 @@
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
                 const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
-                // Altera o cálculo para porcentagem de faltas
-                const absencePercentage = totalEvents > 0 ? (((absenceCount + justifiedAbsenceCount) / totalEvents) * 100).toFixed(2) : 0;
+                // Alterado para calcular porcentagem de faltas (somente "Falta")
+                const absencePercentage = totalEvents > 0 ? ((absenceCount / totalEvents) * 100).toFixed(2) : 0;
                 return {
                     name: cat.name,
                     presence: presenceCount,
