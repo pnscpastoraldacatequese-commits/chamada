@@ -703,7 +703,6 @@
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
                 const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
-                // Alterado para calcular porcentagem de faltas (somente "Falta")
                 const absencePercentage = totalEvents > 0 ? ((absenceCount / totalEvents) * 100).toFixed(2) : 0;
                 return {
                     name: cat.name,
@@ -839,7 +838,7 @@
         
         // Função utilitária para baixar o arquivo CSV
         function downloadCSV(csv, filename) {
-            const BOM = "\uFEff"; // Byte Order Mark para compatibilidade com Excel
+            const BOM = "\uFEFF"; // Byte Order Mark para compatibilidade com Excel
             const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
