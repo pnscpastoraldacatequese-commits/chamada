@@ -327,6 +327,18 @@
             await loadClassesForAdmin();
             await loadCatechumensForAdmin();
         }
+
+        window.closeAdminPanel = function() {
+            document.getElementById('admin-modal').style.display = 'none';
+        }
+
+        // Função para limpar os campos de edição
+        window.clearEditClassFields = function() {
+            document.getElementById('edit-class-select').value = '';
+            document.getElementById('edit-class-name').value = '';
+            document.getElementById('edit-class-id').value = '';
+            document.getElementById('edit-catechist-name').value = '';
+        }
         
         // Função para abrir a seção de relatórios
         function openReportsSection() {
