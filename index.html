@@ -328,12 +328,8 @@
             await loadCatechumensForAdmin();
         }
 
-        window.closeAdminPanel = function() {
-            document.getElementById('admin-modal').style.display = 'none';
-        }
-
-        // Função para limpar os campos de edição
-        window.clearEditClassFields = function() {
+        // Função para limpar os campos de edição de turma
+        function clearEditClassFields() {
             document.getElementById('edit-class-select').value = '';
             document.getElementById('edit-class-name').value = '';
             document.getElementById('edit-class-id').value = '';
@@ -366,6 +362,7 @@
             const reportClassSelect = document.getElementById('report-class-select');
             reportClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
 
+            clearEditClassFields();
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
@@ -861,49 +858,49 @@
         }
 
         // Lógica do botão de Administração
-        document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
-        document.getElementById('add-class-form').onsubmit = window.addTurma;
-        document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
-        document.getElementById('edit-class-form').onsubmit = window.editTurma;
-        document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
-        document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
-        document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
+          document.getElementById('add-class-form').onsubmit = window.addTurma;
+          document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
+          document.getElementById('edit-class-form').onsubmit = window.editTurma;
+          document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
+          document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
+          document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
+          document.getElementById('clear-edit-class-fields-button').addEventListener('click', clearEditClassFields);
 
+          // Conecta os botões de fechar e voltar
+          document.getElementById('back-button').addEventListener('click', backToClasses);
+          document.getElementById('close-modal-button').addEventListener('click', closeModal);
+          document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
+          
+          // Conecta os botões de navegação do painel
+          document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
+          document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
+          
+          // Conecta os botões de relatórios
+          document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
+          document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
 
-        // Conecta os botões de fechar e voltar
-        document.getElementById('back-button').addEventListener('click', backToClasses);
-        document.getElementById('close-modal-button').addEventListener('click', closeModal);
-        document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
-        
-        // Conecta os botões de navegação do painel
-        document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
-        document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
-        
-        // Conecta os botões de relatórios
-        document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
-        document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
+          // Conecta o listener para preencher os campos de edição de turma
+          document.getElementById('edit-class-select').addEventListener('change', async (event) => {
+              const classId = event.target.value;
+              if (classId) {
+                  const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
+                  if (classDoc.exists()) {
+                      const data = classDoc.data();
+                      document.getElementById('edit-class-name').value = data.name || '';
+                      document.getElementById('edit-class-id').value = classId;
+                      document.getElementById('edit-catechist-name').value = data.catechist || '';
+                  }
+              } else {
+                  document.getElementById('edit-class-name').value = '';
+                  document.getElementById('edit-class-id').value = '';
+                  document.getElementById('edit-catechist-name').value = '';
+              }
+          });
 
-        // Conecta o listener para preencher os campos de edição de turma
-        document.getElementById('edit-class-select').addEventListener('change', async (event) => {
-            const classId = event.target.value;
-            if (classId) {
-                const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
-                if (classDoc.exists()) {
-                    const data = classDoc.data();
-                    document.getElementById('edit-class-name').value = data.name || '';
-                    document.getElementById('edit-class-id').value = classId;
-                    document.getElementById('edit-catechist-name').value = data.catechist || '';
-                }
-            } else {
-                document.getElementById('edit-class-name').value = '';
-                document.getElementById('edit-class-id').value = '';
-                document.getElementById('edit-catechist-name').value = '';
-            }
+          initializeAuth();
         });
-
-
-        // Inicia a aplicação quando a janela carrega
-        window.onload = initializeAuth;
     </script>
 </head>
 
@@ -963,6 +960,7 @@
                             <div class="flex gap-2">
                                 <button type="submit" class="flex-grow bg-green-500 text-white p-2 rounded-lg font-semibold hover:bg-green-600 transition-colors">Atualizar</button>
                                 <button type="button" id="delete-class-button" class="bg-red-500 text-white p-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Excluir</button>
+                                <button type="button" id="clear-edit-class-fields-button" class="bg-gray-500 text-white p-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors">Limpar Campos</button>
                             </div>
                         </form>
                     </div>
@@ -1029,94 +1027,6 @@
                     <!-- Área de resultados do relatório -->
                     <div id="report-results" class="mt-6 p-4 bg-white rounded-xl shadow-inner">
                         <p class="text-gray-500 text-center">Os relatórios aparecerão aqui.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- Seção de Cabeçalho -->
-    <header class="bg-indigo-600 text-white p-6 md:p-8 shadow-md">
-        <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-2xl md:text-3xl font-bold">Registro de Presença</h1>
-            <!-- Botão de Administração -->
-            <button id="admin-button" class="bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2 px-4 rounded-full transition-colors">
-                Administração
-            </button>
-        </div>
-    </header>
-
-    <!-- Conteúdo Principal -->
-    <main class="container mx-auto p-4 md:p-6 mt-4">
-        <!-- Estado de Carregamento -->
-        <div id="loading" class="flex items-center justify-center flex-col h-64 text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-t-4 border-indigo-500"></div>
-            <p class="mt-4 text-lg text-gray-600">Carregando...</p>
-        </div>
-
-        <!-- Conteúdo Principal da Aplicação -->
-        <div id="main-content" class="hidden">
-            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
-                <div class="flex justify-end mb-4 text-sm text-gray-500">
-                    <span id="user-id-display"></span>
-                </div>
-
-                <!-- Seção de Seleção de Turma -->
-                <div id="class-selector-section">
-                    <h2 class="text-xl md:text-2xl font-semibold mb-4 text-center">Selecione a Turma</h2>
-                    <p id="admin-info" class="text-center text-sm text-gray-500 mb-4 hidden">
-                        Para adicionar turmas, clique no botão "Administração" acima.
-                    </p>
-                    <ul id="classes-list" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                        <!-- Botões de turma serão injetados aqui via JS -->
-                    </ul>
-                </div>
-
-                <!-- Seção de Registro de Presença -->
-                <div id="presence-section" class="hidden">
-                    <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
-                        <div class="flex items-center mb-2 md:mb-0">
-                            <button id="back-button" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                                </svg>
-                            </button>
-                            <div>
-                                <h2 id="class-title" class="text-xl md:text-2xl font-semibold"></h2>
-                                <span id="catechist-name" class="text-sm text-gray-500 md:text-base"></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Tabela de Presença de Encontros -->
-                    <h3 class="text-xl font-semibold mt-6 mb-2">Presença em Encontros</h3>
-                    <div class="overflow-x-auto relative shadow-md sm:rounded-lg mb-6">
-                        <table class="w-full text-sm text-left text-gray-500">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr id="class-table-header">
-                                    <th>Nome</th>
-                                </tr>
-                            </thead>
-                            <tbody id="class-table-body">
-                                <!-- Dados da tabela serão injetados aqui via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Tabela de Presença de Missas -->
-                    <h3 class="text-xl font-semibold mb-2">Presença em Missas</h3>
-                    <div class="overflow-x-auto relative shadow-md sm:rounded-lg">
-                        <table class="w-full text-sm text-left text-gray-500">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
-                                <tr id="mass-table-header">
-                                    <th>Nome</th>
-                                </tr>
-                            </thead>
-                            <tbody id="mass-table-body">
-                                <!-- Dados da tabela serão injetados aqui via JS -->
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </div>
