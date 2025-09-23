@@ -347,9 +347,8 @@
         async function loadClassesForAdmin() {
             const classSelect = document.getElementById('new-catechumen-class');
             classSelect.innerHTML = '';
-            classSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const editClassSelect = document.getElementById('edit-class-select');
-            editClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
+            editClassSelect.innerHTML = '';
             const transferClassSelect = document.getElementById('edit-catechumen-class-transfer');
             transferClassSelect.innerHTML = '<option value="" disabled selected>Transferir para outra turma</option>';
             const reportClassSelect = document.getElementById('report-class-select');
@@ -362,7 +361,7 @@
                 const querySnapshot = await getDocs(classesCollectionRef);
                 const classes = [];
                 querySnapshot.forEach(doc => {
-                    classes.push({ id: doc.id, ...doc.data() });
+                    classes.push({ id: doc.id, name: doc.data().name });
                 });
 
                 // Ordena as turmas por nome em ordem alfabética
@@ -389,7 +388,6 @@
                     reportOption.innerText = cls.name;
                     reportClassSelect.appendChild(reportOption);
                 });
-
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
                 showModal("Erro ao carregar as turmas para o painel de administração.");
@@ -704,6 +702,8 @@
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
                 const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
+                // Altera o cálculo para porcentagem de faltas
+                const absencePercentage = totalEvents > 0 ? (((absenceCount + justifiedAbsenceCount) / totalEvents) * 100).toFixed(2) : 0;
                 // Alterado para calcular porcentagem de faltas (somente "Falta")
                 const absencePercentage = totalEvents > 0 ? ((absenceCount / totalEvents) * 100).toFixed(2) : 0;
                 return {
@@ -841,7 +841,6 @@
         // Função utilitária para baixar o arquivo CSV
         function downloadCSV(csv, filename) {
             const BOM = "\uFEFF"; // Byte Order Mark para compatibilidade com Excel
-            const BOM = "\uFEff"; // Byte Order Mark para compatibilidade com Excel
             const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -873,25 +872,6 @@
         // Conecta os botões de relatórios
         document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
         document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
-
-        // Conecta o listener para preencher os campos de edição de turma
-        document.getElementById('edit-class-select').addEventListener('change', async (event) => {
-            const classId = event.target.value;
-            if (classId) {
-                const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
-                if (classDoc.exists()) {
-                    const data = classDoc.data();
-                    document.getElementById('edit-class-name').value = data.name || '';
-                    document.getElementById('edit-class-id').value = classId;
-                    document.getElementById('edit-catechist-name').value = data.catechist || '';
-                }
-            } else {
-                document.getElementById('edit-class-name').value = '';
-                document.getElementById('edit-class-id').value = '';
-                document.getElementById('edit-catechist-name').value = '';
-            }
-        });
-
 
         // Inicia a aplicação quando a janela carrega
         window.onload = initializeAuth;
@@ -931,7 +911,7 @@
                         <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
                         <form id="add-class-form">
                             <div class="flex flex-col md:flex-row gap-2">
-                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T111_TERCA)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-catechist-name" placeholder="Nome do catequista" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
