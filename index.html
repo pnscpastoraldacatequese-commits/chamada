@@ -364,6 +364,7 @@
             const reportClassSelect = document.getElementById('report-class-select');
             reportClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
 
+            clearEditClassFields();
 
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
@@ -910,7 +911,6 @@
           document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
           document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
           document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
-          // O botão Limpar Campos foi removido do HTML. Se você precisar dele, adicione-o de volta.
           
           document.getElementById('back-button').addEventListener('click', backToClasses);
           document.getElementById('close-modal-button').addEventListener('click', closeModal);
