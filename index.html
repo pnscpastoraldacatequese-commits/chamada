@@ -18,18 +18,21 @@
         };
         const initialAuthToken = null; // Deixe como null para testes locais
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
     <script type="module">
         // Importa os módulos necessários do Firebase
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc, where, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js)";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js)";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, getDocs, addDoc, where, deleteDoc } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js)";
+        import { setLogLevel } from "[https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js](https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js)";
 
         // Variáveis globais para o aplicativo
         let app, auth, db, userId, appId;
 
         setLogLevel('debug'); // Ativa logs de depuração para o Firestore
+
+        // URL da imagem de logo (substitua com o link real do seu logo)
+        const LOGO_URL = "[https://placehold.co/40x40/4F46E5/FFFFFF?text=LOGO](https://placehold.co/40x40/4F46E5/FFFFFF?text=LOGO)"; 
 
         // Função para inicializar a autenticação do Firebase
         async function initializeAuth() {
@@ -49,12 +52,11 @@
                     if (user) {
                         userId = user.uid;
                         console.log("Usuário autenticado:", userId);
-                        document.getElementById('user-id-display').innerText = `ID do Usuário: ${userId}`;
+                        // NOTA: O ID do usuário não é mais exibido na página, apenas no console.
                         setupUI();
                     } else {
                         console.log("Usuário desautenticado.");
                         userId = null;
-                        document.getElementById('user-id-display').innerText = `ID do Usuário: Não Autenticado`;
                         document.getElementById('loading').style.display = 'none';
                         document.getElementById('main-content').style.display = 'block';
                     }
@@ -109,7 +111,7 @@
         async function loadClasses() {
             const classesList = document.getElementById('classes-list');
             classesList.innerHTML = '';
-
+            
             try {
                 if (!db) throw new Error("Firestore is not initialized.");
                 const classesCollectionRef = collection(db, `artifacts/${appId}/public/data/classes`);
@@ -123,7 +125,7 @@
                     showModal("Nenhuma turma encontrada. Por favor, adicione turmas na seção de Administração.");
                     document.getElementById('admin-info').style.display = 'block';
                 }
-
+                
                 // Ordena as turmas por nome em ordem alfabética
                 classes.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -147,7 +149,7 @@
             document.getElementById('class-selector-section').style.display = 'none';
             document.getElementById('presence-section').style.display = 'block';
             document.getElementById('admin-button').style.display = 'none'; // Esconde o botão de admin
-
+            
             window.location.hash = classId; // Adiciona o ID da turma na URL
 
             const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
@@ -221,7 +223,7 @@
             if (className.toLowerCase().includes('terça')) {
                 classDatesToUse = classDatesTuesday;
             } else if (className.toLowerCase().includes('sábado')) {
-                classDatesTouse = classDatesSaturday;
+                classDatesToUse = classDatesSaturday;
             } else {
                 classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
             }
@@ -328,12 +330,20 @@
             await loadCatechumensForAdmin();
         }
 
+        // Função para limpar os campos de edição de turma
+        function clearEditClassFields() {
+            document.getElementById('edit-class-select').value = '';
+            document.getElementById('edit-class-name').value = '';
+            document.getElementById('edit-class-id').value = '';
+            document.getElementById('edit-catechist-name').value = '';
+        }
+        
         // Função para abrir a seção de relatórios
         function openReportsSection() {
             document.getElementById('reports-section').style.display = 'block';
             document.getElementById('management-section').style.display = 'none';
         }
-
+        
         // Função para abrir a seção de gerenciamento
         function openManagementSection() {
             document.getElementById('reports-section').style.display = 'none';
@@ -346,13 +356,15 @@
 
         async function loadClassesForAdmin() {
             const classSelect = document.getElementById('new-catechumen-class');
-            classSelect.innerHTML = '';
+            classSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const editClassSelect = document.getElementById('edit-class-select');
-            editClassSelect.innerHTML = '';
+            editClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
             const transferClassSelect = document.getElementById('edit-catechumen-class-transfer');
             transferClassSelect.innerHTML = '<option value="" disabled selected>Transferir para outra turma</option>';
             const reportClassSelect = document.getElementById('report-class-select');
             reportClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
+            const batchClassSelect = document.getElementById('batch-catechumen-class');
+            batchClassSelect.innerHTML = '<option value="" disabled selected>Selecione a Turma</option>';
 
 
             try {
@@ -361,7 +373,7 @@
                 const querySnapshot = await getDocs(classesCollectionRef);
                 const classes = [];
                 querySnapshot.forEach(doc => {
-                    classes.push({ id: doc.id, name: doc.data().name });
+                    classes.push({ id: doc.id, ...doc.data() });
                 });
 
                 // Ordena as turmas por nome em ordem alfabética
@@ -372,6 +384,7 @@
                     option.value = cls.id;
                     option.innerText = cls.name;
                     classSelect.appendChild(option);
+                    batchClassSelect.appendChild(option.cloneNode(true)); // Novo: Adiciona para o lote
 
                     const editOption = document.createElement('option');
                     editOption.value = cls.id;
@@ -382,18 +395,19 @@
                     transferOption.value = cls.id;
                     transferOption.innerText = cls.name;
                     transferClassSelect.appendChild(transferOption);
-
+                    
                     const reportOption = document.createElement('option');
                     reportOption.value = cls.id;
                     reportOption.innerText = cls.name;
                     reportClassSelect.appendChild(reportOption);
                 });
+
             } catch (error) {
                 console.error("Erro ao carregar turmas para o admin:", error);
                 showModal("Erro ao carregar as turmas para o painel de administração.");
             }
         }
-
+        
         async function loadCatechumensForAdmin() {
             const editCatechumenSelect = document.getElementById('edit-catechumen-select');
             editCatechumenSelect.innerHTML = '<option value="" disabled selected>Selecione o Catequizando</option>';
@@ -408,7 +422,7 @@
                 querySnapshot.forEach(doc => {
                     catechumens.push({ id: doc.id, ...doc.data() });
                 });
-
+                
                 // Ordena os catequizandos por nome em ordem alfabética
                 catechumens.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -417,7 +431,7 @@
                     option.value = cat.id;
                     option.innerText = `${cat.name} (${cat.classId})`;
                     editCatechumenSelect.appendChild(option);
-
+                    
                     const reportOption = document.createElement('option');
                     reportOption.value = cat.id;
                     reportOption.innerText = `${cat.name} (${cat.classId})`;
@@ -462,6 +476,46 @@
                 showModal("Erro ao adicionar a turma. Verifique a conexão.");
             }
         }
+        
+        // Novo: Adicionar Catequizandos em Lote
+        window.addBatchCatechumen = async function(event) {
+            event.preventDefault();
+            const classId = document.getElementById('batch-catechumen-class').value;
+            const namesText = document.getElementById('batch-catechumen-names').value;
+
+            if (!classId || !namesText.trim()) {
+                showModal("Selecione a turma e cole os nomes.");
+                return;
+            }
+
+            const names = namesText.split('\n').map(name => name.trim()).filter(name => name.length > 0);
+            if (names.length === 0) {
+                showModal("Nenhum nome válido encontrado para adicionar.");
+                return;
+            }
+
+            try {
+                if (!db) throw new Error("Firestore is not initialized.");
+                const catechumensCollectionRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+                
+                let addedCount = 0;
+                for (const name of names) {
+                    await addDoc(catechumensCollectionRef, {
+                        name: name,
+                        classId: classId,
+                        createdAt: new Date().toISOString()
+                    });
+                    addedCount++;
+                }
+
+                document.getElementById('batch-catechumen-names').value = '';
+                showModal(`${addedCount} catequizandos adicionados à turma com sucesso!`);
+                await loadCatechumensForAdmin();
+            } catch (error) {
+                console.error("Erro ao adicionar catequizandos em lote:", error);
+                showModal("Erro ao adicionar em lote. Verifique a conexão.");
+            }
+        }
 
         window.addCatequizando = async function(event) {
             event.preventDefault();
@@ -489,7 +543,7 @@
                 showModal("Erro ao adicionar o catequizando. Verifique a conexão.");
             }
         }
-
+        
         window.editTurma = async function(event) {
             event.preventDefault();
             const classId = document.getElementById('edit-class-select').value;
@@ -517,11 +571,11 @@
                         const oldDocRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
                         const newDocRef = doc(db, `artifacts/${appId}/public/data/classes`, newClassId);
                         const oldDoc = await getDoc(oldDocRef);
-
+                        
                         if (oldDoc.exists()) {
                             await setDoc(newDocRef, oldDoc.data());
                             await updateDoc(newDocRef, { name: newClassName || oldDoc.data().name, catechist: catechistName || oldDoc.data().catechist });
-
+                            
                             // Atualiza os catequizandos
                             const catechumensRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
                             const q = query(catechumensRef, where("classId", "==", classId));
@@ -529,7 +583,7 @@
                             querySnapshot.forEach(async (docSnap) => {
                                 await updateDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, docSnap.id), { classId: newClassId });
                             });
-
+                            
                             // Atualiza os registros de presença
                             const presencesRef = collection(db, `artifacts/${appId}/public/data/presences`);
                             const qPresences = query(presencesRef, where("classId", "==", classId));
@@ -559,7 +613,7 @@
                 showModal("Nenhum campo preenchido para atualização.");
                 return;
             }
-
+            
             try {
                 const classRef = doc(db, `artifacts/${appId}/public/data/classes`, classId);
                 await updateDoc(classRef, updateData);
@@ -571,7 +625,7 @@
                 showModal("Erro ao editar a turma. Verifique a conexão.");
             }
         }
-
+        
         window.deleteTurma = async function() {
             const classId = document.getElementById('edit-class-select').value;
             if (!classId) {
@@ -615,12 +669,12 @@
             if (newClassId) {
                 updateData.classId = newClassId;
             }
-
+            
             if (Object.keys(updateData).length === 0) {
                 showModal("Preencha o nome ou selecione uma nova turma para atualizar.");
                 return;
             }
-
+            
             try {
                 const catechumenRef = doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId);
                 await updateDoc(catechumenRef, updateData);
@@ -631,7 +685,7 @@
                 showModal("Erro ao editar o catequizando. Verifique a conexão.");
             }
         }
-
+        
         window.deleteCatequizando = async function() {
             const catechumenId = document.getElementById('edit-catechumen-select').value;
             if (!catechumenId) {
@@ -670,12 +724,12 @@
             querySnapshotCatechumens.forEach(doc => {
                 catechumensInClass.push({ id: doc.id, name: doc.data().name });
             });
-
+            
             if (catechumensInClass.length === 0) {
                 showModal("Nenhum catequizando encontrado nesta turma para gerar o relatório.");
                 return;
             }
-
+            
             // Carrega todos os registros de presença
             const allPresence = [];
             const presenceRef = collection(db, `artifacts/${appId}/public/data/presences`);
@@ -697,23 +751,23 @@
                 classDatesToUse = classDatesTuesday; // Default para terça se não encontrar
             }
             const totalEvents = classDatesToUse.length + massDates.length;
-
+            
             const reportData = catechumensInClass.map(cat => {
                 const presenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Presença').length;
                 const absenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta').length;
                 const justifiedAbsenceCount = allPresence.filter(p => p.catechumenId === cat.id && p.status === 'Falta Justificada').length;
-                const percent = totalEvents > 0 ? ((presenceCount / totalEvents) * 100).toFixed(2) : 0;
+                const absencePercentage = totalEvents > 0 ? ((absenceCount / totalEvents) * 100).toFixed(2) : 0;
                 return {
                     name: cat.name,
                     presence: presenceCount,
                     absence: absenceCount,
                     justified: justifiedAbsenceCount,
-                    percentage: percent
+                    percentage: absencePercentage
                 };
             });
 
             currentClassReportData = reportData; // Salva os dados para exportação
-
+            
             let reportHtml = `
                 <div class="flex justify-between items-center mb-4">
                     <h4 class="text-xl font-bold">Relatório da Turma: ${className}</h4>
@@ -727,7 +781,7 @@
                                 <th class="p-2">Presença</th>
                                 <th class="p-2">Falta</th>
                                 <th class="p-2">Falta Justificada</th>
-                                <th class="p-2">% Presença</th>
+                                <th class="p-2">% Faltas</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -762,12 +816,12 @@
             querySnapshotPresence.forEach(doc => {
                 allPresence.push(doc.data());
             });
-
+            
             if (allPresence.length === 0) {
                  showModal("Nenhum registro de presença encontrado para este catequizando.");
                 return;
             }
-
+            
             const catechumenDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/catechumens`, catechumenId));
             const catechumenName = catechumenDoc.data()?.name || 'Catequizando';
             const className = catechumenDoc.data()?.classId || 'Turma Desconhecida';
@@ -801,7 +855,7 @@
             document.getElementById('report-results').innerHTML = reportHtml;
             document.getElementById('export-catechumen-report-button').addEventListener('click', window.exportCatechumenReportToCSV);
         }
-
+        
         // Função para exportar o relatório por turma
         window.exportClassReportToCSV = function() {
             if (!currentClassReportData) {
@@ -809,15 +863,15 @@
                 return;
             }
 
-            let csv = "Nome,Presença,Falta,Falta Justificada,% Presença\n";
+            let csv = "Nome,Presença,Falta,Falta Justificada,% Faltas\n";
             currentClassReportData.forEach(row => {
                 csv += `"${row.name}",${row.presence},${row.absence},${row.justified},"${row.percentage}%"\n`;
             });
-
+            
             const className = document.getElementById('report-class-select').options[document.getElementById('report-class-select').selectedIndex].text;
             downloadCSV(csv, `relatorio_turma_${className}.csv`);
         }
-
+        
         // Função para exportar o relatório por catequizando
         window.exportCatechumenReportToCSV = function() {
              if (!currentCatechumenReportData) {
@@ -834,7 +888,7 @@
             const catechumenName = document.getElementById('report-catechumen-select').options[document.getElementById('report-catechumen-select').selectedIndex].text;
             downloadCSV(csv, `relatorio_catequizando_${catechumenName}.csv`);
         }
-
+        
         // Função utilitária para baixar o arquivo CSV
         function downloadCSV(csv, filename) {
             const BOM = "\uFEFF"; // Byte Order Mark para compatibilidade com Excel
@@ -847,31 +901,48 @@
             document.body.removeChild(link);
         }
 
-        // Lógica do botão de Administração
-        document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
-        document.getElementById('add-class-form').onsubmit = window.addTurma;
-        document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
-        document.getElementById('edit-class-form').onsubmit = window.editTurma;
-        document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
-        document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
-        document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
+        // Lógica para conectar os botões de fechar e voltar
+        document.addEventListener('DOMContentLoaded', () => {
+          document.getElementById('admin-button').addEventListener('click', window.openAdminPanel);
+          document.getElementById('add-class-form').onsubmit = window.addTurma;
+          document.getElementById('add-catechumen-form').onsubmit = window.addCatequizando;
+          // Novo: Conecta o formulário de Adicionar em Lote
+          document.getElementById('add-batch-catechumen-form').onsubmit = window.addBatchCatechumen;
 
+          document.getElementById('edit-class-form').onsubmit = window.editTurma;
+          document.getElementById('delete-class-button').addEventListener('click', window.deleteTurma);
+          document.getElementById('edit-catechumen-form').onsubmit = window.editCatequizando;
+          document.getElementById('delete-catechumen-button').addEventListener('click', window.deleteCatequizando);
+          
+          document.getElementById('back-button').addEventListener('click', backToClasses);
+          document.getElementById('close-modal-button').addEventListener('click', closeModal);
+          document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
+          
+          document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
+          document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
+          
+          document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
+          document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
 
-        // Conecta os botões de fechar e voltar
-        document.getElementById('back-button').addEventListener('click', backToClasses);
-        document.getElementById('close-modal-button').addEventListener('click', closeModal);
-        document.getElementById('close-admin-panel-button').addEventListener('click', closeAdminPanel);
+          document.getElementById('edit-class-select').addEventListener('change', async (event) => {
+              const classId = event.target.value;
+              if (classId) {
+                  const classDoc = await getDoc(doc(db, `artifacts/${appId}/public/data/classes`, classId));
+                  if (classDoc.exists()) {
+                      const data = classDoc.data();
+                      document.getElementById('edit-class-name').value = data.name || '';
+                      document.getElementById('edit-class-id').value = classId;
+                      document.getElementById('edit-catechist-name').value = data.catechist || '';
+                  }
+              } else {
+                  document.getElementById('edit-class-name').value = '';
+                  document.getElementById('edit-class-id').value = '';
+                  document.getElementById('edit-catechist-name').value = '';
+              }
+          });
 
-        // Conecta os botões de navegação do painel
-        document.getElementById('reports-tab-button').addEventListener('click', openReportsSection);
-        document.getElementById('management-tab-button').addEventListener('click', openManagementSection);
-
-        // Conecta os botões de relatórios
-        document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
-        document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
-
-        // Inicia a aplicação quando a janela carrega
-        window.onload = initializeAuth;
+          initializeAuth();
+        });
     </script>
 </head>
 
@@ -893,7 +964,7 @@
                 <h3 class="text-2xl font-semibold">Painel de Administração</h3>
                 <button id="close-admin-panel-button" class="text-gray-500 hover:text-gray-800 transition-colors">&times;</button>
             </div>
-
+            
             <div class="space-y-6">
                 <!-- Abas de navegação -->
                 <div class="flex justify-center border-b border-gray-200">
@@ -908,14 +979,14 @@
                         <h4 class="text-lg font-bold mb-2">Adicionar Turma</h4>
                         <form id="add-class-form">
                             <div class="flex flex-col md:flex-row gap-2">
-                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T_111_TERCA)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <input type="text" id="new-class-id" placeholder="ID da turma (ex: T111_TERCA)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-class-name" placeholder="Nome da nova turma (ex: Turma A)" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <input type="text" id="new-catechist-name" placeholder="Nome do catequista" class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                                 <button type="submit" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar</button>
                             </div>
                         </form>
                     </div>
-
+                    
                     <!-- Seção Editar/Excluir Turma -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Editar/Excluir Turma</h4>
@@ -935,7 +1006,21 @@
                         </form>
                     </div>
 
-                    <!-- Seção Adicionar Catequizando -->
+                    <!-- Seção Adicionar Catequizando em Lote -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Adicionar Catequizandos em Lote</h4>
+                        <form id="add-batch-catechumen-form">
+                            <div class="flex flex-col md:flex-row gap-2 mb-2">
+                                <select id="batch-catechumen-class" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <option value="" disabled selected>Selecione a Turma</option>
+                                </select>
+                            </div>
+                            <textarea id="batch-catechumen-names" placeholder="Cole os nomes dos catequizandos aqui, um por linha." rows="5" required class="w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2"></textarea>
+                            <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar em Lote</button>
+                        </form>
+                    </div>
+
+                    <!-- Seção Adicionar Catequizando Individual -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Adicionar Catequizando</h4>
                         <form id="add-catechumen-form">
@@ -948,7 +1033,7 @@
                             <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar Catequizando</button>
                         </form>
                     </div>
-
+                    
                     <!-- Seção Editar/Excluir Catequizando -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
@@ -982,7 +1067,7 @@
                             <button id="generate-class-report-button" class="bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Gerar Relatório</button>
                         </div>
                     </div>
-
+                    
                     <!-- Relatório por Catequizando -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Relatório por Catequizando</h4>
@@ -1007,7 +1092,10 @@
     <!-- Seção de Cabeçalho -->
     <header class="bg-indigo-600 text-white p-6 md:p-8 shadow-md">
         <div class="container mx-auto flex items-center justify-between">
-            <h1 class="text-2xl md:text-3xl font-bold">Registro de Presença</h1>
+            <div class="flex items-center gap-4">
+                <img id="app-logo" src="${LOGO_URL}" alt="Logo da Catequese" class="w-10 h-10 rounded-full">
+                <h1 class="text-2xl md:text-3xl font-bold">Registro de Presença</h1>
+            </div>
             <!-- Botão de Administração -->
             <button id="admin-button" class="bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2 px-4 rounded-full transition-colors">
                 Administração
@@ -1027,7 +1115,7 @@
         <div id="main-content" class="hidden">
             <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
                 <div class="flex justify-end mb-4 text-sm text-gray-500">
-                    <span id="user-id-display"></span>
+                    <!-- ID do Usuário removido da interface -->
                 </div>
 
                 <!-- Seção de Seleção de Turma -->
@@ -1046,7 +1134,7 @@
                     <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4">
                         <div class="flex items-center mb-2 md:mb-0">
                             <button id="back-button" class="p-2 rounded-full hover:bg-gray-200 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                                 </svg>
                             </button>
