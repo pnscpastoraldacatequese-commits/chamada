@@ -949,6 +949,18 @@
                         </form>
                     </div>
 
+                     <!-- Seção Adicionar Catequizando em Lote -->
+                    <div class="bg-gray-100 p-4 rounded-xl">
+                        <h4 class="text-lg font-bold mb-2">Adicionar Catequizandos em Lote (CSV)</h4>
+                        <p class="text-sm text-gray-600 mb-2">Formato CSV esperado: **nome;id_da_turma** por linha. Ex: João Silva;T_111_TERCA</p>
+                        <form id="add-batch-catechumen-form">
+                            <div class="flex flex-col md:flex-row gap-2 mb-2">
+                                <input type="file" id="batch-catechumen-file" accept=".csv" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-500 text-white p-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors">Adicionar Catequizandos (CSV)</button>
+                        </form>
+                    </div>
+                    
                     <!-- Seção Editar/Excluir Catequizando -->
                     <div class="bg-gray-100 p-4 rounded-xl">
                         <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
@@ -1093,3 +1105,4 @@
 </body>
 
 </html>
+
