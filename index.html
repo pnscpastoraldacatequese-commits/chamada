@@ -651,6 +651,101 @@
             }
         }
 
+         // --- Funções de Inclusão em Lote ---
+          window.addCatechumensInBatch = async function(event) {
+            event.preventDefault();
+            const fileInput = document.getElementById('batch-catechumen-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showModal("Selecione um arquivo CSV para upload.");
+                return;
+            }
+    
+            if (!db || !userId) {
+                console.error("Firestore não inicializado ou usuário não autenticado.");
+                showModal("Erro: Não foi possível salvar o registro. Tente recarregar a página.");
+                return;
+            }
+    
+            const reader = new FileReader();
+
+            reader.onload = async function(e) {
+                const csvData = e.target.result;
+                const lines = csvData.trim().split('\n');
+                const catechumensToInsert = [];
+                const errors = [];
+
+                // Processa cada linha do CSV
+                lines.forEach((line, index) => {
+                    const [name, classId] = line.split(';').map(s => s.trim());
+                    if (name && classId) {
+                        catechumensToInsert.push({ name, classId });
+                    } else if (line.trim() !== '') {
+                        errors.push(`Linha ${index + 1} inválida: "${line}" (formato esperado: nome;id_da_turma)`);
+                    }
+                });
+
+                if (catechumensToInsert.length === 0) {
+                    let message = "Nenhum catequizando válido encontrado no arquivo.";
+                    if (errors.length > 0) {
+                        message += `<br>Erros encontrados: <ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+                    }
+                    showModal(message);
+                    return;
+                }
+
+                if (errors.length > 0) {
+                    showModal(`Atenção: ${errors.length} linha(s) foram ignoradas devido a erro de formato. Somente os dados válidos serão processados.`);
+                    // A execução continua, mas o usuário é alertado
+                }
+
+
+                const BATCH_SIZE = 500;
+                let batches = [];
+                for (let i = 0; i < catechumensToInsert.length; i += BATCH_SIZE) {
+                    batches.push(catechumensToInsert.slice(i, i + BATCH_SIZE));
+                }
+
+                let totalInserted = 0;
+                try {
+                    const catechumensCollectionRef = collection(db, `artifacts/${appId}/public/data/catechumens`);
+
+                    for (const batch of batches) {
+                        const batchWriter = writeBatch(db); // Cria um novo lote para cada grupo de 500
+                
+                        batch.forEach(cat => {
+                            // O addDoc gera um ID automático, mas não pode ser usado em batch. 
+                            // O uso correto para batch é set() em um doc() com ID gerado.
+                            const newDocRef = doc(catechumensCollectionRef); 
+                            batchWriter.set(newDocRef, {
+                                name: cat.name,
+                                classId: cat.classId,
+                                createdAt: new Date().toISOString()
+                            });
+                            totalInserted++;
+                        });
+
+                        await batchWriter.commit(); // Executa o lote
+                    }
+
+                    fileInput.value = ''; // Limpa o campo de arquivo
+                    showModal(`${totalInserted} catequizando(s) adicionado(s) com sucesso em lote!`);
+                    await loadCatechumensForAdmin(); // Atualiza a lista de catequizandos
+                } catch (error) {
+                    console.error("Erro ao adicionar catequizandos em lote:", error);
+                    showModal("Erro ao adicionar os catequizandos em lote. Verifique o formato do CSV e sua conexão.");
+                }
+            };
+
+            reader.onerror = function() {
+                showModal("Erro ao ler o arquivo.");
+            };
+
+            // Inicia a leitura do arquivo como texto
+            reader.readAsText(file);
+        }
+        
         // --- Funções de Relatórios ---
         let currentClassReportData = null; // Armazena dados do relatório por turma
         let currentCatechumenReportData = null; // Armazena dados do relatório por catequizando
@@ -870,6 +965,9 @@
         document.getElementById('generate-class-report-button').addEventListener('click', window.generateReportByClass);
         document.getElementById('generate-catechumen-report-button').addEventListener('click', window.generateReportByCatechumen);
 
+        // Conecta o formulário de adição em lote
+        document.getElementById('add-batch-catechumen-form').onsubmit = window.addCatechumensInBatch;
+
         // Inicia a aplicação quando a janela carrega
         window.onload = initializeAuth;
     </script>
@@ -949,10 +1047,10 @@
                         </form>
                     </div>
 
-                     <!-- Seção Adicionar Catequizando em Lote -->
-                    <div class="bg-gray-100 p-4 rounded-xl">
-                        <h4 class="text-lg font-bold mb-2">Adicionar Catequizandos em Lote (CSV)</h4>
-                        <p class="text-sm text-gray-600 mb-2">Formato CSV esperado: **nome;id_da_turma** por linha. Ex: João Silva;T_111_TERCA</p>
+                    <!-- Seção Adicionar Catequizando em Lote -->
+                        <div class="bg-gray-100 p-4 rounded-xl">
+                            <h4 class="text-lg font-bold mb-2">Adicionar Catequizandos em Lote (CSV)</h4>
+                            <p class="text-sm text-gray-600 mb-2">Formato CSV esperado: **nome;id_da_turma** por linha. Ex: João Silva;T_111_TERCA</p>
                         <form id="add-batch-catechumen-form">
                             <div class="flex flex-col md:flex-row gap-2 mb-2">
                                 <input type="file" id="batch-catechumen-file" accept=".csv" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
@@ -962,8 +1060,8 @@
                     </div>
                     
                     <!-- Seção Editar/Excluir Catequizando -->
-                    <div class="bg-gray-100 p-4 rounded-xl">
-                        <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
+                        <div class="bg-gray-100 p-4 rounded-xl">
+                            <h4 class="text-lg font-bold mb-2">Editar/Excluir Catequizando</h4>
                         <form id="edit-catechumen-form">
                             <div class="flex flex-col md:flex-row gap-2 mb-2">
                                 <select id="edit-catechumen-select" required class="flex-grow p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -981,7 +1079,7 @@
                         </form>
                     </div>
                 </div>
-
+             
                 <!-- Seção de Relatórios -->
                 <div id="reports-section" class="hidden">
                     <!-- Relatório por Turma -->
@@ -1105,4 +1203,5 @@
 </body>
 
 </html>
+
 
